@@ -1,10 +1,12 @@
 <p align="center">
 <img width="200" height="200" alt="logo 1" src="fastlane/metadata/android/en-US/images/icon.png" />
 </p>
-<h1 align="center">Periodt: Track & Predict Cycles</h1>
+<h1 align="center">Elya: Track & Predict Cycles</h1>
 <p align="center">
-Periodt is a privacy‑first Android app that keeps all cycle data on the device and uses on‑device logic to predict upcoming periods, fertile windows, and ovulation estimates — with full pill tracking and post-pill recovery awareness.
+Elya is a privacy‑first Android app that keeps all cycle data on the device and uses on‑device logic to predict upcoming periods, fertile windows, and ovulation estimates — with full pill tracking and post-pill recovery awareness.
 </p>
+
+<p align="center">Elya is a community fork of <a href="https://github.com/benny10ben/Periodt">Periodt</a> by Benny and remains licensed under the GNU GPL-3.0.</p>
 <br />
 
 <p align="center">

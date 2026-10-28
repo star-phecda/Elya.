@@ -161,16 +161,16 @@ fun AddCycleDialog(
     }
 
     val isDark = LocalAppIsDark.current
-    val containerColor  = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val accentColor     = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor  = if (isDark) Color(0xFF2A1C26) else Color.White
+    val accentColor     = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
     val surfaceFallback = if (isDark) Color.Black else Color.Black.copy(alpha = 0.05f)
-    val pastelGreen     = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
+    val pastelGreen     = if (isDark) Color(0xFF482538) else Color(0xFFF4DFE7)
     val pastelOrange    = Color(0xFFD89046)
     val pastelMaroon    = Color(0xFF4E1A1A)
     val pillBackground  = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-    val pillTextColor   = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textPrimary     = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1B1B1B)
+    val pillTextColor   = if (isDark) Color.White else Color(0xFF2A1C26)
+    val textPrimary     = if (isDark) Color.White else Color(0xFF321B28)
+    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF2A1C26)
 
     val formatter  = remember { DateTimeFormatter.ofPattern("MMM dd") }
 
@@ -444,10 +444,10 @@ fun MinimalDatePickerDialog(
     }
     var isDateError by remember { mutableStateOf(false) }
 
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary    = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor    = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = if (isDark) Color(0xFF2A1C26) else Color.White
+    val textPrimary    = if (isDark) Color.White else Color(0xFF2A1C26)
+    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
+    val accentColor    = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
 
     
     val configuration = LocalConfiguration.current
@@ -587,7 +587,7 @@ fun MinimalMonthPicker(
     val selectedDate = selectedMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
 
     
-    val backgroundBrush = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
+    val backgroundBrush = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
     val onCardContent = textColor
     val onCardContentMuted = onCardContent.copy(alpha = 0.70f)
 

@@ -122,18 +122,18 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
     val screenScroll = rememberScrollState()
     val isDark       = LocalAppIsDark.current
 
-    val gradTop         = if (isDark) Color(0xFF7B8FA3) else Color(0xFF8FA0B1)
-    val gradMid         = if (isDark) Color(0xFF7288A0) else Color(0xFF8799B0)
-    val gradBottom      = if (isDark) Color(0xFF5A7396) else Color(0xFF6E87A7)
-    val onGradient      = Color.White
-    val onGradientMuted = onGradient.copy(alpha = if (isDark) 0.70f else 0.55f)
+    val gradTop         = if (isDark) Color(0xFF553044) else Color(0xFFE6C1D0)
+    val gradMid         = if (isDark) Color(0xFF462A3B) else Color(0xFFF0D4DF)
+    val gradBottom      = if (isDark) Color(0xFF38212F) else Color(0xFFF7E8EE)
+    val onGradient      = if (isDark) Color(0xFFFFF2F7) else Color(0xFF613248)
+    val onGradientMuted = if (isDark) onGradient.copy(alpha = 0.70f) else Color(0xFF795C6B)
 
-    val surface = if (isDark) Color(0xFF141820) else Color(0xFFF5F7F9)
-    val textCol = if (isDark) Color(0xFFF5F7FA) else Color(0xFF0F172A)
-    val subCol  = if (isDark) Color(0xFFBFC6D1) else Color(0xFF1b1b1b)
+    val surface = if (isDark) Color(0xFF21161F) else Color(0xFFFFFAF7)
+    val textCol = if (isDark) Color(0xFFFFF3F7) else Color(0xFF321B28)
+    val subCol  = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
 
-    val bleedingChartColor = Color(0xFFD89046)
-    val painChartColor     = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
+    val bleedingChartColor = Color(0xFFB95F83)
+    val painChartColor     = if (isDark) Color(0xFF9B7890) else Color(0xFFC87898)
 
     val avgPeriodLength = calculatePeriodLength(cycles).takeIf { cycles.any { c -> c.endDate != null } }
     val avgCycleLength  = calculateAvgCycleLength(cycles)
@@ -239,8 +239,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
                 ScrollableLineChart(
                     points = bleedingPoints, dates = bleedingDates, lineColor = bleedingChartColor,
                     yLabels = listOf("S", "L", "M", "H"), yMax = 3f, showArea = true,
-                    gridColor  = if (isDark) Color(0xFF2A2F36) else Color(0xFFEAEAEA),
-                    axisColor  = if (isDark) Color(0xFF343A43) else Color(0xFFE0E0E0),
+                    gridColor  = if (isDark) Color(0xFF45313F) else Color(0xFFEADCE3),
+                    axisColor  = if (isDark) Color(0xFF5A4452) else Color(0xFFDFCBD6),
                     labelColor = subCol, surface = surface,
                     modifier = Modifier.fillMaxWidth().height(220.dp)
                 )
@@ -253,8 +253,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
                 ScrollableLineChart(
                     points = painPoints, dates = painDates, lineColor = painChartColor,
                     yLabels = (0..10 step 2).map { "$it" }, yMax = 10f, showArea = true,
-                    gridColor  = if (isDark) Color(0xFF2A2F36) else Color(0xFFEAEAEA),
-                    axisColor  = if (isDark) Color(0xFF343A43) else Color(0xFFE0E0E0),
+                    gridColor  = if (isDark) Color(0xFF45313F) else Color(0xFFEADCE3),
+                    axisColor  = if (isDark) Color(0xFF5A4452) else Color(0xFFDFCBD6),
                     labelColor = subCol, surface = surface,
                     modifier = Modifier.fillMaxWidth().height(220.dp)
                 )
@@ -288,10 +288,10 @@ private fun CombinedStatsCard(
     val interactionSource = remember { MutableInteractionSource() }
 
     val isDark       = LocalAppIsDark.current
-    val surfaceColor = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
+    val surfaceColor = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
     val dividerColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f)
-    val valueColor   = if (isDark) Color.White else Color(0xFF0F172A)
-    val titleColor   = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
+    val valueColor   = if (isDark) Color.White else Color(0xFF321B28)
+    val titleColor   = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
 
     val gentleSpring = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 
@@ -417,7 +417,7 @@ private fun MinimalChartCard(
     content: @Composable () -> Unit
 ) {
     val isDark      = LocalAppIsDark.current
-    val cardSurface = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
+    val cardSurface = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -463,7 +463,7 @@ private fun BloodColorPieChart(
     val colorMap = mapOf(
         "bright red" to Color(0xFFFF8B94),
         "dark red"   to Color(0xFF4E1A1A),
-        "brown"      to Color(0xFFD89046),
+        "brown"      to Color(0xFFB95F83),
         "pink"       to Color(0xFFFFD3B6),
         "orange"     to Color(0xFFA8E6CF),
         "purple"     to Color(0xFF8089D2)
@@ -518,7 +518,7 @@ private fun BloodColorPieChart(
                         fontFamily = BricolageGrotesque,
                         fontSize   = SIZE_XS,
                         fontWeight = FontWeight.Bold,
-                        color      = if (isDark) color else Color(0xFF1B1B1B)
+                        color      = if (isDark) color else Color(0xFF2A1C26)
                     )
                 }
             }

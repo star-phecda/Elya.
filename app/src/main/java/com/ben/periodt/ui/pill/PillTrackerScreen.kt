@@ -54,13 +54,13 @@ fun PillTrackerScreen(viewModel: PeriodViewModel) {
 
     val isDark = LocalAppIsDark.current
 
-    val textPrimary    = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val cardBg         = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
-    val pillBackground = if (isDark) Color(0xFFE8EBED).copy(alpha = 0.1f) else Color(0xFFE8EBED).copy(alpha = 0.4f)
+    val textPrimary    = if (isDark) Color.White else Color(0xFF321B28)
+    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
+    val cardBg         = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color(0xFFFFFCFA)
+    val pillBackground = if (isDark) Color(0xFFF4DFE7).copy(alpha = 0.1f) else Color(0xFFF4DFE7).copy(alpha = 0.4f)
 
-    val starAccent  = if (isDark) Color(0xFF8089D2) else Color(0xFF2C3F70)
-    val themeAccent = Color(0xFFa68e74)
+    val starAccent  = if (isDark) Color(0xFFE7A4BC) else Color(0xFF613248)
+    val themeAccent = Color(0xFFA77C91)
 
     val activeAccent = when (postPillState) {
         PostPillState.DISCOVERY, PostPillState.LEARNING -> starAccent

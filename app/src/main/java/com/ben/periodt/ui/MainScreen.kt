@@ -43,6 +43,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ben.periodt.ui.theme.PeriodTTheme
 import com.ben.periodt.ui.theme.LocalAppIsDark
 import com.ben.periodt.ui.theme.SetSystemBars
 import com.ben.periodt.ui.calendar.AddCycleDialog
@@ -114,7 +115,7 @@ fun SmoothBottomNavigation(
 ) {
     val dimens = LocalAppDimens.current
     val isDark = LocalAppIsDark.current
-    val navBarBg = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
+    val navBarBg = if (isDark) Color(0xFF482538) else Color(0xFF86415F)
 
     Box(
         modifier = modifier
@@ -182,11 +183,13 @@ fun MainScreen() {
         CalendarWidget.refreshAll(context)
     }
 
-    CompositionLocalProvider(
-        LocalAppIsDark provides isDark,
-        LocalAppDimens provides dimensions
-    ) {
-        MainScreenContent(isDark = isDark)
+    PeriodTTheme(darkTheme = isDark) {
+        CompositionLocalProvider(
+            LocalAppIsDark provides isDark,
+            LocalAppDimens provides dimensions
+        ) {
+            MainScreenContent(isDark = isDark)
+        }
     }
 }
 
@@ -249,17 +252,17 @@ private fun MainScreenContent(isDark: Boolean) {
         }
     }
 
-    val fadeColor = if (isDark) Color.Black else Color.White
+    val fadeColor = if (isDark) Color(0xFF171117) else Color.White
     val bottomFadeBrush = Brush.verticalGradient(listOf(fadeColor.copy(alpha = 0f), fadeColor.copy(alpha = 0f), fadeColor.copy(alpha = 0.8f), fadeColor))
 
     val bgGradient = if (isDark) {
         Brush.linearGradient(
-            0.0f to Color.Black, 0.7f to Color.Black, 1.0f to Color.Black,
+            0.0f to Color(0xFF171117), 0.7f to Color(0xFF171117), 1.0f to Color(0xFF171117),
             start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
         )
     } else {
         Brush.linearGradient(
-            colors = listOf(Color(0xFFe8ebed), Color(0xFFf2f0e3)),
+            colors = listOf(Color(0xFFFFF8F5), Color(0xFFF7EAF0)),
             start  = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
         )
     }
@@ -315,7 +318,7 @@ private fun MainScreenContent(isDark: Boolean) {
                             .size(dimens.barHeight)
                             .shadow(14.dp, RoundedCornerShape(percent = 49), ambientColor = Color.Black.copy(alpha = 0.6f), spotColor = Color.Black.copy(alpha = 0.6f))
                             .clip(CircleShape)
-                            .background(if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3))
+                            .background(if (isDark) Color(0xFF482538) else Color(0xFF86415F))
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                 when (currentRoute) {
                                     Screen.Pill.route -> showAddPillDialog = true
@@ -353,7 +356,7 @@ private fun MainScreenContent(isDark: Boolean) {
             ModalBottomSheet(
                 onDismissRequest = { showProfileSheet = false },
                 sheetState = profileSheetState,
-                containerColor = if (isDark) Color(0xFF1b1b1b) else Color.White,
+                containerColor = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA),
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
             ) {
                 ProfileBottomSheetContent(
