@@ -105,9 +105,9 @@ fun OnboardingPager(
 @Composable
 fun WelcomePage(onGetStarted: () -> Unit) {
     val isDark = isSystemInDarkTheme()
-    val titleColor = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val logoBoxColor = if (isDark) Color.Black else Color.White
-    val logoBorder = if (isDark) Color(0xFF333333) else Color(0xFFE2E8F0)
+    val titleColor = if (isDark) Color.White else Color(0xFF321B28)
+    val logoBoxColor = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
+    val logoBorder = if (isDark) Color(0xFF654558) else Color(0xFFE9D8E0)
 
     var showLanguageDialog by remember { mutableStateOf(false) }
 
@@ -267,7 +267,7 @@ fun LanguageItem(
 @Composable
 fun FeaturesPage(onNext: () -> Unit) {
     val isDark = isSystemInDarkTheme()
-    val textColor = if (isDark) Color.White else Color(0xFF1B1B1B)
+    val textColor = if (isDark) Color.White else Color(0xFF321B28)
     val subTextColor = textColor.copy(alpha = 0.6f)
 
     var showTermsDialog by remember { mutableStateOf(false) }
@@ -383,18 +383,18 @@ fun FeaturesPage(onNext: () -> Unit) {
 @Composable
 fun ModeSelectionPage(onStart: () -> Unit) {
     val isDark = isSystemInDarkTheme()
-    val textColor = if (isDark) Color.White else Color(0xFF1B1B1B)
+    val textColor = if (isDark) Color.White else Color(0xFF321B28)
     val subTextColor = textColor.copy(alpha = 0.7f)
 
     // Expanded to 5 cards to include Profiles and Pills
     val infoPagerState = rememberPagerState(pageCount = { 5 })
 
     val themeColor = when (infoPagerState.currentPage) {
-        0 -> if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-        1 -> Color(0xFFD89046) // Smart Predictions (Orange)
+        0 -> if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
+        1 -> Color(0xFFB96484) // Smart Predictions (Orange)
         2 -> Color(0xFF4E1A1A) // Cycle Syncing (Maroon)
-        3 -> if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-        4 -> Color(0xFFA68E74) // Pill Tracking (Sand/Taupe)
+        3 -> if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
+        4 -> Color(0xFFA77C91) // Pill Tracking (Sand/Taupe)
         else -> textColor
     }
 
@@ -461,11 +461,11 @@ fun ModeSelectionPage(onStart: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 when (page) {
-                    0 -> InfoCard("Privacy First", "All your data is stored locally on your device. We never upload your personal history to any servers.", Icons.Rounded.PrivacyTip, if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3))
-                    1 -> InfoCard("Smart Predictions", "We calculate your cycle based on the average of your last 3 logs. The more you log, the more accurate we get.", Icons.Rounded.AutoAwesome, Color(0xFFD89046))
+                    0 -> InfoCard("Privacy First", "All your data is stored locally on your device. We never upload your personal history to any servers.", Icons.Rounded.PrivacyTip, if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F))
+                    1 -> InfoCard("Smart Predictions", "We calculate your cycle based on the average of your last 3 logs. The more you log, the more accurate we get.", Icons.Rounded.AutoAwesome, Color(0xFFB96484))
                     2 -> InfoCard("Cycle Syncing", "Get phase-specific advice on nutrition, exercise, and sleep to live in harmony with your hormones.", Icons.Rounded.SelfImprovement, Color(0xFF4E1A1A))
-                    3 -> InfoCard("Multi-Profile", "Track cycles for yourself, family, or partners effortlessly from one app with seamless profile switching.", Icons.Rounded.Group, if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3))
-                    4 -> InfoCard("Daily Pills", "Never miss a dose. Set customizable daily reminders for your birth control, vitamins, or supplements.", Icons.Rounded.Medication, Color(0xFFA68E74))
+                    3 -> InfoCard("Multi-Profile", "Track cycles for yourself, family, or partners effortlessly from one app with seamless profile switching.", Icons.Rounded.Group, if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F))
+                    4 -> InfoCard("Daily Pills", "Never miss a dose. Set customizable daily reminders for your birth control, vitamins, or supplements.", Icons.Rounded.Medication, Color(0xFFA77C91))
                 }
             }
         }

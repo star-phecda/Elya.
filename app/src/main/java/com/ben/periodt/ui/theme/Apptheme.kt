@@ -1,12 +1,15 @@
 package com.ben.periodt.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 /** Elya's shared palette for the ivory, blush, rose, and plum visual identity. */
 object ElyaPalette {
@@ -25,6 +28,15 @@ object ElyaPalette {
     val NightText = Color(0xFFFFF2F7)
     val NightMuted = Color(0xFFD4BAC7)
 }
+
+/** Expressive rounded corners shared by cards, sheets, and controls. */
+private val ElyaShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(36.dp)
+)
 
 /** MainScreen provides the resolved mode from the saved appearance preference. */
 val LocalAppIsDark = compositionLocalOf { false }
@@ -76,6 +88,7 @@ fun PeriodTTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        shapes = ElyaShapes,
         content = content
     )
 }

@@ -93,7 +93,7 @@ fun AvatarDisplay(
     if (avatarString.startsWith("#")) {
         val pColor = remember(avatarString) {
             try { Color(android.graphics.Color.parseColor(avatarString)) }
-            catch (e: Exception) { Color(0xFFD89046) }
+            catch (e: Exception) { Color(0xFF8F405F) }
         }
         Box(
             modifier = modifier.clip(CircleShape).background(pColor),
@@ -118,7 +118,7 @@ fun AvatarDisplay(
             )
         } else {
             Box(
-                modifier = modifier.clip(CircleShape).background(Color(0xFFD89046)),
+                modifier = modifier.clip(CircleShape).background(Color(0xFF8F405F)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -318,7 +318,7 @@ private fun ProfileRow(
     onSwitch: (Int) -> Unit,
     onEdit: (PeriodViewModel.Profile) -> Unit
 ) {
-    val sheetBg = if (isDark) Color(0xFF1B1B1B) else Color.White
+    val sheetBg = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
     val targetBg = if (isSelected) lerp(sheetBg, highlightColor, 0.15f) else rowBg
     val animatedBg by animateColorAsState(targetValue = targetBg, animationSpec = tween(300), label = "rowBgAnim")
 
@@ -395,10 +395,10 @@ fun ProfileEditorDialog(
         }
     }
 
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
+    val textPrimary = if (isDark) Color(0xFFFFF2F7) else Color(0xFF321B28)
+    val textSub = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
+    val accentColor = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -552,9 +552,9 @@ fun ProfileBottomSheetContent(
     onSettingsClick: () -> Unit,
     listState: LazyListState = rememberLazyListState()
 ) {
-    val textPrimary = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val textPrimary = if (isDark) Color(0xFFFFF2F7) else Color(0xFF321B28)
+    val textSub = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
+    val accentColor = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
     val rowBg = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     Column(
@@ -650,10 +650,10 @@ fun LegacyImportDialog(
     onDismiss: () -> Unit
 ) {
     val isDark = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
+    val textPrimary = if (isDark) Color(0xFFFFF2F7) else Color(0xFF321B28)
+    val textSub = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
+    val accentColor = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
     val rowBg = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     val configuration = LocalConfiguration.current
