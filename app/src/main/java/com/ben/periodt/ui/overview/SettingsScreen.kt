@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.ben.periodt.R
 import com.ben.periodt.ui.theme.BricolageGrotesque
 import com.ben.periodt.ui.theme.LocalAppIsDark
 import com.ben.periodt.ui.profiles.LegacyImportDialog
@@ -381,10 +384,15 @@ fun SettingsScreen(
     }
 
     if (showAbout) {
-        ContentDialog(title = "About", onDismiss = { showAbout = false }) {
+        ContentDialog(title = "About Elya", onDismiss = { showAbout = false }) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Elya", style = MaterialTheme.typography.headlineMedium, fontFamily = BricolageGrotesque, fontWeight = FontWeight.Bold, color = textPrimary)
+                Image(
+                    painter = painterResource(id = R.drawable.elya_logo),
+                    contentDescription = "Elya floral app logo",
+                    modifier = Modifier.size(156.dp).clip(RoundedCornerShape(24.dp))
+                )
                 Text("Designed to be simple, private, and aesthetic.", fontFamily = BricolageGrotesque, color = textSub, fontSize = SIZE_MD, textAlign = TextAlign.Center)
+                Text("A community fork of Periodt · GPL-3.0", fontFamily = BricolageGrotesque, color = textSub.copy(alpha = 0.82f), fontSize = SIZE_SM, textAlign = TextAlign.Center)
                 Button(
                     onClick = { try { uriHandler.openUri(GITHUB_REPO_URL) } catch (e: Exception) { } },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor),
