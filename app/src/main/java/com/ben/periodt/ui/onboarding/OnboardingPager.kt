@@ -191,15 +191,15 @@ fun WelcomePage(onGetStarted: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.logo),
-                        contentDescription = "Periodt Logo",
+                        painter = painterResource(id = R.drawable.elya_logo),
+                        contentDescription = "Elya floral logo",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 }
                 Spacer(Modifier.width(16.dp))
                 Text(
-                    text = "Periodt.",
+                    text = "Elya",
                     fontFamily = BricolageGrotesque,
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.Bold,
@@ -363,7 +363,7 @@ fun FeaturesPage(onNext: () -> Unit) {
                 onDismiss = { showTermsDialog = false }
             ) {
                 Text(
-                    text = "By using Periodt., you agree that your data is stored locally on this device. " +
+                    text = "By using Elya, you agree that your data is stored locally on this device. " +
                             "We do not collect, sell, or share your personal health information.\n\n" +
                             "1. Data Privacy: Your history remains yours.\n" +
                             "2. Usage: This app provides insights, not medical advice.\n" +
@@ -418,7 +418,7 @@ fun ModeSelectionPage(onStart: () -> Unit) {
         ) {
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "Your Guide to\nPeriodt.",
+                text = "Your Guide to\nElya",
                 fontFamily = BricolageGrotesque,
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
