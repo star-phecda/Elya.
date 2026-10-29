@@ -95,7 +95,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.ben.periodt.R
 import kotlin.math.round
-import kotlin.math.roundToInt
 
 private val SIZE_XXS = 11.sp
 private val SIZE_XS  = 12.sp
@@ -131,15 +130,27 @@ internal fun downsampleInsightsSeries(
         "Every Insights point must have a matching date label"
     }
 
-    val lastSourceIndex = series.points.lastIndex
+    val sourceCount = series.points.size
     val points = ArrayList<Pair<Float, Float>>(maxPoints)
     val dates = ArrayList<String>(maxPoints)
-    for (sample in 0 until maxPoints) {
-        val sourceIndex = (sample.toDouble() * lastSourceIndex / (maxPoints - 1))
-            .roundToInt()
-            .coerceIn(0, lastSourceIndex)
-        points += series.points[sourceIndex]
-        dates += series.dates[sourceIndex]
+    for (bucket in 0 until maxPoints) {
+        val start = bucket * sourceCount / maxPoints
+        val end = (bucket + 1) * sourceCount / maxPoints
+        var yTotal = 0f
+        for (index in start until end) {
+            yTotal += series.points[index].second
+        }
+        val bucketSize = (end - start).toFloat()
+        val y = when (bucket) {
+            0 -> series.points.first().second
+            maxPoints - 1 -> series.points.last().second
+            else -> yTotal / bucketSize
+        }
+
+        // The chart positions x using the number of plotted points, so use dense bucket indices.
+        points.add(bucket.toFloat() to y)
+        val labelIndex = if (bucket == 0) 0 else (end - 1).coerceAtMost(series.dates.lastIndex)
+        dates.add(series.dates[labelIndex])
     }
     return InsightsChartSeries(points = points, dates = dates)
 }
