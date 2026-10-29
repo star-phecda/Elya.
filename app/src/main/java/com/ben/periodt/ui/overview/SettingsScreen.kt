@@ -284,6 +284,16 @@ fun SettingsScreen(
                             catch (e: Exception) { Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show() }
                         }
                     )
+                    SettingsItem(
+                        icon = Icons.Rounded.Email,
+                        title = "Contact developer",
+                        subtitle = ElyaIdentity.CONTACT_EMAIL,
+                        tint = textPrimary,
+                        onClick = {
+                            try { uriHandler.openUri("mailto:${ElyaIdentity.CONTACT_EMAIL}") }
+                            catch (e: Exception) { Toast.makeText(context, "Could not open email app", Toast.LENGTH_SHORT).show() }
+                        }
+                    )
                     SettingsItem(icon = Icons.Rounded.NewReleases, title = "What's new", tint = textPrimary, onClick = { showWhatsNew = true })
                 }
 
@@ -382,6 +392,20 @@ fun SettingsScreen(
                 )
                 Text("Designed to be simple, private, and aesthetic.", fontFamily = BricolageGrotesque, color = textSub, fontSize = SIZE_MD, textAlign = TextAlign.Center)
                 Text("A community fork of Periodt · GPL-3.0", fontFamily = BricolageGrotesque, color = textSub.copy(alpha = 0.82f), fontSize = SIZE_SM, textAlign = TextAlign.Center)
+                TextButton(
+                    onClick = {
+                        try { uriHandler.openUri("mailto:${ElyaIdentity.CONTACT_EMAIL}") }
+                        catch (e: Exception) { Toast.makeText(context, "Could not open email app", Toast.LENGTH_SHORT).show() }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = ElyaIdentity.CONTACT_EMAIL,
+                        fontFamily = BricolageGrotesque,
+                        color = accentColor,
+                        fontSize = SIZE_MD
+                    )
+                }
                 Button(
                     onClick = { try { uriHandler.openUri(GITHUB_REPO_URL) } catch (e: Exception) { } },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor),

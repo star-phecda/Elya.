@@ -216,6 +216,24 @@ internal fun buildCalendarDayIndex(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Returns a new compact-calendar state only when a deliberate vertical gesture crosses the threshold.
+ * Upward movement collapses the month grid; downward movement expands it only at the history list's top.
+ */
+internal fun nextCalendarCollapsedState(
+    deltaY: Float,
+    isCollapsed: Boolean,
+    historyAtTop: Boolean,
+    thresholdPx: Float
+): Boolean? {
+    require(thresholdPx >= 0f) { "thresholdPx must not be negative" }
+    return when {
+        deltaY < -thresholdPx && !isCollapsed -> true
+        deltaY > thresholdPx && isCollapsed && historyAtTop -> false
+        else -> null
+    }
+}
+
 @Composable
 fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {}) {
     val cycles by viewModel.cycles.collectAsState()
@@ -267,6 +285,7 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
 
     val listState  = rememberLazyListState()
     var isCollapsed by remember { mutableStateOf(false) }
+    val collapseThresholdPx = with(LocalDensity.current) { 16.dp.toPx() }
 
     // Keep both calendar modes aligned without starting a second animation during a vertical swipe.
     LaunchedEffect(isCollapsed) {
@@ -285,14 +304,16 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
         }
     }
 
-    val nestedScrollConnection = remember {
+    val nestedScrollConnection = remember(collapseThresholdPx) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                if (delta < 0 && !isCollapsed) { isCollapsed = true; return Offset.Zero }
-                if (delta > 0 && isCollapsed && listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-                    isCollapsed = false; return Offset.Zero
-                }
+                val nextState = nextCalendarCollapsedState(
+                    deltaY = available.y,
+                    isCollapsed = isCollapsed,
+                    historyAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+                    thresholdPx = collapseThresholdPx
+                )
+                if (nextState != null) isCollapsed = nextState
                 return Offset.Zero
             }
         }
