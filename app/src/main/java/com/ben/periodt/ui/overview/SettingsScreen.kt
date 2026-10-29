@@ -301,7 +301,7 @@ fun SettingsScreen(
 
                 // 4. MORE
                 SettingsSection(title = "More", surfaceColor) {
-                    SettingsItem(icon = Icons.Rounded.Info, title = "About Elya", subtitle = "v1.2.2", tint = textPrimary, onClick = { showAbout = true })
+                    SettingsItem(icon = Icons.Rounded.Info, title = "About Elya", subtitle = "v1.2.3", tint = textPrimary, onClick = { showAbout = true })
                     SettingsItem(icon = Icons.Rounded.PrivacyTip, title = "Privacy Policy", tint = textPrimary, onClick = { showPrivacy = true })
                 }
 

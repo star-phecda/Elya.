@@ -215,7 +215,6 @@ internal fun buildCalendarDayIndex(
     return CalendarDayIndex(phasesByDay, cyclesByDay, packsByDay, today, prediction?.ovulationDay)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 /**
  * Returns a new compact-calendar state only when a deliberate vertical gesture crosses the threshold.
  * Upward movement collapses the month grid; downward movement expands it only at the history list's top.
@@ -234,6 +233,7 @@ internal fun nextCalendarCollapsedState(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {}) {
     val cycles by viewModel.cycles.collectAsState()
