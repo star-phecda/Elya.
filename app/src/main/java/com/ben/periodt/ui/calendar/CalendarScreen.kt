@@ -229,7 +229,7 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
     val isDark = LocalAppIsDark.current
     val isTransitioning by viewModel.isTransitioning.collectAsState()
     val isOnPill by viewModel.isOnPill.collectAsState()
-    val pillStartDate by viewModel.pillStartDate.collectAsState()
+    val pillStartDate by viewModel.pillPackStartDate.collectAsState()
     val pillStopDate by viewModel.pillStopDate.collectAsState()
     val pillPacks by viewModel.pillPacks.collectAsState()
     val pillPackCount by viewModel.pillPackCount.collectAsState()
