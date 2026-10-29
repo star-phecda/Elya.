@@ -53,6 +53,7 @@ fun PillTrackerScreen(
 ) {
     val isOnPill by viewModel.isOnPill.collectAsState()
     val postPillState by viewModel.postPillState.collectAsState()
+    val prediction by viewModel.prediction.collectAsState()
     val startDate by viewModel.pillPackStartDate.collectAsState()
     val pillCount by viewModel.pillPackCount.collectAsState()
     val pillHistory by viewModel.pillPacks.collectAsState()
@@ -161,6 +162,7 @@ fun PillTrackerScreen(
                 ActivePackSection(
                     startDate = startDate!!,
                     pillCount = pillCount,
+                    nextEstimate = prediction?.mostLikelyPeriodStart,
                     cardBg = cardBg,
                     pillBackground = pillBackground,
                     textPrimary = textPrimary,
@@ -256,6 +258,7 @@ fun PillTrackerScreen(
 private fun ActivePackSection(
     startDate: LocalDate,
     pillCount: Int,
+    nextEstimate: LocalDate?,
     cardBg: Color,
     pillBackground: Color,
     textPrimary: Color,
@@ -363,6 +366,18 @@ private fun ActivePackSection(
                 ) {
                     drawRoundRect(color = pillBackground.copy(alpha = 0.4f), size = size, cornerRadius = CornerRadius(50f))
                     drawRoundRect(brush = progressBrush, size = Size(animatedProgress * size.width, size.height), cornerRadius = CornerRadius(50f))
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Rounded.EventAvailable, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Withdrawal bleed estimate", fontFamily = BricolageGrotesque, fontSize = SIZE_SM,
+                            fontWeight = FontWeight.SemiBold, color = textPrimary)
+                        Text(
+                            text = nextEstimate?.let { it.pretty() } ?: "More cycle data may be needed for an estimate",
+                            fontFamily = BricolageGrotesque, fontSize = SIZE_SM, color = textSub
+                        )
+                    }
                 }
             }
         }
