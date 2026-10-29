@@ -70,6 +70,7 @@ fun PillTrackerScreen(
         else -> themeAccent
     }
     val sortedHistory = remember(pillHistory) { pillHistory.sortedByDescending { it.startDate } }
+    var showStopConfirmation by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.refreshState() }
 
@@ -165,7 +166,7 @@ fun PillTrackerScreen(
                     textPrimary = textPrimary,
                     textSub = textSub,
                     accentColor = themeAccent,
-                    onStop = { viewModel.stopPillTracking() }
+                    onStop = { showStopConfirmation = true }
                 )
             }
         }
@@ -210,6 +211,44 @@ fun PillTrackerScreen(
                 }
             }
         }
+    }
+
+    if (showStopConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showStopConfirmation = false },
+            icon = { Icon(Icons.Rounded.StopCircle, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = {
+                Text(
+                    "Stop pill tracking?",
+                    fontFamily = BricolageGrotesque,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "This will mark your current pack as stopped and update your tracking mode. Your saved pack history will remain.",
+                    fontFamily = BricolageGrotesque,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showStopConfirmation = false
+                        viewModel.stopPillTracking()
+                    }
+                ) {
+                    Text("Stop tracking", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopConfirmation = false }) {
+                    Text("Keep tracking")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
