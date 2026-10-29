@@ -280,7 +280,7 @@ fun SettingsScreen(
                         subtitle = "Report issues on GitHub",
                         tint = textPrimary,
                         onClick = {
-                            try { uriHandler.openUri("https://github.com/benny10ben/Periodt/issues") }
+                            try { uriHandler.openUri(GITHUB_REPO_URL + "issues") }
                             catch (e: Exception) { Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show() }
                         }
                     )
