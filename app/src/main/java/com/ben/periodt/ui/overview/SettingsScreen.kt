@@ -40,6 +40,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.ben.periodt.R
 import com.ben.periodt.ui.theme.BricolageGrotesque
 import com.ben.periodt.ui.theme.LocalAppIsDark
+import com.ben.periodt.ui.shared.ElyaIdentity
 import com.ben.periodt.ui.profiles.LegacyImportDialog
 import com.ben.periodt.reminder.dataStore
 import com.ben.periodt.viewmodel.PeriodViewModel
@@ -296,7 +297,7 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(32.dp))
                 Text(
-                    text = "Dedicated to my love ❤️",
+                    text = ElyaIdentity.SETTINGS_DEDICATION,
                     fontFamily = BricolageGrotesque,
                     fontSize = SIZE_SM,
                     color = textPrimary.copy(alpha = 0.5f),

@@ -1,11 +1,9 @@
 package com.ben.periodt.ui.calendar
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -137,10 +135,6 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.absoluteValue
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -273,27 +267,21 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
 
     val listState  = rememberLazyListState()
     var isCollapsed by remember { mutableStateOf(false) }
-    val scope      = rememberCoroutineScope()
 
+    // Keep both calendar modes aligned without starting a second animation during a vertical swipe.
     LaunchedEffect(isCollapsed) {
         if (isCollapsed) {
             val visibleMonth = state.firstVisibleMonth.yearMonth
-            val currentMonth = YearMonth.from(currentDate)
-
             val targetDate = if (visibleMonth == currentMonth) {
-                
                 currentDate
             } else {
-                
                 state.firstVisibleMonth.weekDays.flatten()
                     .firstOrNull { it.position == DayPosition.MonthDate }?.date ?: currentDate
             }
-
-            weekState.animateScrollToWeek(targetDate)
+            weekState.scrollToWeek(targetDate)
         } else {
-            
             val targetDate = weekState.firstVisibleWeek.days.getOrNull(3)?.date ?: currentDate
-            state.animateScrollToMonth(YearMonth.from(targetDate))
+            state.scrollToMonth(YearMonth.from(targetDate))
         }
     }
 
@@ -344,11 +332,7 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
                 if (match != null) dayLogTarget = match to currentDate else onAddCycleClick()
             }
         )
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .animateContentSize(animationSpec = tween(durationMillis = 220, easing = LinearOutSlowInEasing))
-        ) {
-            CalendarCard(
+        CalendarCard(
                 isCollapsed     = isCollapsed,
                 state           = state,
                 weekState       = weekState,
@@ -362,8 +346,7 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
                 firstDayOfWeek  = firstDayOfWeek,
                 dailyLogs       = dailyLogs,
                 onDayTapped     = { cycle, date -> dayLogTarget = Pair(cycle, date) }
-            )
-        }
+        )
 
         LazyColumn(
             modifier            = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
@@ -521,7 +504,7 @@ private fun CycleHeroCard(
         else -> "Next period estimate · ${prediction.mostLikelyPeriodStart.format(formatter)}"
     }
     Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp).animateContentSize(tween(220)),
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp),
         shape = RoundedCornerShape(if (compact) 24.dp else 30.dp),
         colors = CardDefaults.cardColors(containerColor = surface), border = BorderStroke(1.dp, edge)
     ) {
@@ -981,27 +964,25 @@ private fun CalendarCard(
 
                 Spacer(Modifier.height(8.dp))
 
-                AnimatedContent(targetState = isCollapsed, label = "CalendarType") { collapsed ->
-                    if (collapsed) {
-                        WeekCalendar(state = weekState, dayContent = { weekDay ->
-                            DayCellEnhanced(
-                                date = weekDay.date, isCurrentMonth = true, dayIndex = dayIndex,
-                                isTransitioning = isTransitioning, isLearningMode = isLearningMode,
-                                isOnPill = isOnPill, dailyLogs = dailyLogs, onDayTapped = onDayTapped
-                            )
-                        })
-                    } else {
-                        HorizontalCalendar(state = state, dayContent = { calendarDay ->
-                            DayCellEnhanced(
-                                date = calendarDay.date, isCurrentMonth = calendarDay.position == DayPosition.MonthDate,
-                                dayIndex = dayIndex, isTransitioning = isTransitioning, isLearningMode = isLearningMode,
-                                isOnPill = isOnPill, dailyLogs = dailyLogs, onDayTapped = onDayTapped
-                            )
-                        })
-                    }
+                if (isCollapsed) {
+                    WeekCalendar(state = weekState, dayContent = { weekDay ->
+                        DayCellEnhanced(
+                            date = weekDay.date, isCurrentMonth = true, dayIndex = dayIndex,
+                            isTransitioning = isTransitioning, isLearningMode = isLearningMode,
+                            isOnPill = isOnPill, dailyLogs = dailyLogs, onDayTapped = onDayTapped
+                        )
+                    })
+                } else {
+                    HorizontalCalendar(state = state, dayContent = { calendarDay ->
+                        DayCellEnhanced(
+                            date = calendarDay.date, isCurrentMonth = calendarDay.position == DayPosition.MonthDate,
+                            dayIndex = dayIndex, isTransitioning = isTransitioning, isLearningMode = isLearningMode,
+                            isOnPill = isOnPill, dailyLogs = dailyLogs, onDayTapped = onDayTapped
+                        )
+                    })
                 }
 
-                AnimatedVisibility(visible = !isCollapsed, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                if (!isCollapsed) {
                     Column {
                         Spacer(Modifier.height(12.dp))
                         CalendarLegend(isOnPill = isOnPill, pillPacks = pillPacks)

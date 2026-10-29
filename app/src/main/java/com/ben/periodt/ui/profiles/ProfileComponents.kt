@@ -60,6 +60,7 @@ import coil.compose.AsyncImage
 import com.ben.periodt.R
 import com.ben.periodt.ui.theme.BricolageGrotesque
 import com.ben.periodt.ui.theme.LocalAppIsDark
+import com.ben.periodt.ui.shared.ElyaIdentity
 import com.ben.periodt.viewmodel.PeriodViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -500,14 +501,14 @@ fun ProfileEditorDialog(
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
-                                        text = "developer.ben10@gmail.com",
+                                        text = ElyaIdentity.CONTACT_EMAIL,
                                         fontFamily = BricolageGrotesque,
                                         fontSize = SIZE_MD,
                                         color = accentColor,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.clickable {
                                             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                                data = Uri.parse("mailto:developer.ben10@gmail.com")
+                                                data = Uri.parse("mailto:${ElyaIdentity.CONTACT_EMAIL}")
                                             }
                                             try { context.startActivity(intent) } catch (e: Exception) { }
                                         }

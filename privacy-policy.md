@@ -36,4 +36,4 @@ Periodt is a privacy‑first Android app that works entirely on the device. This
 - The “Last updated” date will change when this policy is revised. Material updates will be reflected in the repository and, where appropriate, highlighted in the app.
 
 ## Contact
-For questions or privacy requests, contact: developer.ben10@gmail.com
+For questions or privacy requests, contact: dawnphecda@gmail.com
