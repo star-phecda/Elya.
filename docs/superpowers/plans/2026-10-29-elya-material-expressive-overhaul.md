@@ -1,91 +1,149 @@
 # Elya Material 3 Expressive Overhaul — Implementation Plan
 
-> **Execution:** Inline implementation using Superpowers; verify every task in CI before claiming completion.
+> **Workflow:** Superpowers execution + test-first changes, with Dyslex.ai task sequencing and accessibility review. Context7 was used to verify current Compose patterns.
 
-**Goal:** Implement the approved Elya design overhaul from the 21-slide proposal, improve responsiveness on lower-powered Android devices, and deliver a verified debug APK without changing existing cycle or pill calculation semantics.
+**Goal:** Implement the approved 21-slide Elya redesign and address avoidable UI work that contributes to lag, without changing saved cycle/pill data or prediction semantics.
 
-**Architecture:** Retain the existing Jetpack Compose + Material 3 app and Room-backed ViewModel. Reuse the current navigation, calendar library, charts, dialogs, and theme preference; improve surfaces and interactions in place. Memoize expensive date/statistics derivations, avoid redundant state collection and oversized rendering layers, and preserve the existing data model.
+**Architecture:** Keep the existing Jetpack Compose + Material 3 application, navigation destinations, Room schema and ViewModel. Reuse the app's current dialogs, calendar engine and chart components while introducing a shared date index, one memoized Insights analytics projection, accessible navigation, lazy histories and theme-token consistency.
 
 **Tech Stack:** Kotlin, Jetpack Compose, Material 3, Navigation Compose, Room, Coroutines, GitHub Actions.
 
-**Spec:** Approved proposal: `Elya_Design_Overhaul_Proposal.pdf` (21 slides). Brand-system source: `app/src/main/java/com/ben/periodt/ui/theme/Apptheme.kt`.
+**Spec:** Approved proposal: `Elya_Design_Overhaul_Proposal.pdf` (21 slides). Shared brand system: `app/src/main/java/com/ben/periodt/ui/theme/Apptheme.kt`.
 
 ## Global Constraints
 
-- Keep the existing Room schema and cycle prediction / pill-state rules unchanged.
-- Keep offline-first data handling, export/import behavior, privacy copy, attribution to Periodt, and GPL-3.0 notices.
-- Use the Elya token palette: Ivory `#FFF8F5`, Paper `#FFFCFA`, Blush `#F4DFE7`, Rose `#8F405F`, Rose Light `#E7A4BC`, Plum `#613248`, Ink `#321B28`, Muted `#795C6B`, Border `#E9D8E0`; maintain the approved dark palette.
-- Preserve the existing Calendar / Pill / Overview route IDs and settings route. Route labels may become Cycle / Pills / Insights.
-- Keep controls functional; visual-only buttons and fake data are not acceptable.
-- Do not call the app complete until a current CI run passes unit tests, `assembleDebug`, artifact upload, and the downloaded APK has been checked for existence and size.
+- Keep the existing Room schema, cycle prediction algorithm, post-pill state rules and pill pack date rules unchanged.
+- Keep data local, retain export/import behavior, reminders, widget refreshes, privacy copy, Periodt attribution and GPL-3.0 notices.
+- Palette: Ivory `#FFF8F5`, Paper `#FFFCFA`, Blush `#F4DFE7`, Rose `#8F405F`, Rose Light `#E7A4BC`, Plum `#613248`, Ink `#321B28`, Muted `#795C6B`, Border `#E9D8E0`; retain the established dark palette.
+- Preserve existing route IDs (`calendar`, `pill`, `overview`, `settings`); present the three primary routes as Cycle / Pills / Insights.
+- Every visible action must invoke real behavior; no fake sample health values or inert action buttons.
+- Completion gate: current branch build must pass `testDebugUnitTest`, `assembleDebug` and artifact upload. Retrieve the APK, confirm size/type/checksum, and distinguish those checks from unavailable on-device performance profiling.
 
 ## Review Focus
 
-1. Calendar date boundaries and period/pill precedence — compare against the prior behavior for overlapping cycle/pill windows and prediction states.
-2. No logged cycle / no prediction — present honest empty states and don't invent estimates.
-3. Discovery, Learning, Normal, and active-pill modes — maintain their exact current semantics and copy context.
-4. Small screens, system font scaling, talkback selection semantics, contrast, and touch targets.
-5. Long cycle histories and many daily logs — avoid rendering/computing all data repeatedly on every scroll or calendar-cell recomposition.
+1. Calendar month bounds, adjacent-day range highlights, and logged-period / pill / prediction precedence.
+2. No history, a single cycle, daily-log overrides and expired predictions.
+3. Discovery, Learning, Normal and active pill pack modes.
+4. Compact widths, larger font settings, readable contrasts, selected navigation semantics and touch targets.
+5. Long cycle/pill history and repeated daily-log/chart calculations.
 
 ---
 
-## Task DYX-001 — Restore green build before extending the branch
+## Task DYX-001 — Restore and verify the build gate
 
-**Files:** `app/src/main/java/com/ben/periodt/ui/calendar/CalendarScreen.kt`
+**Goal:** Keep Kotlin compilation healthy before screen work expands.
 
-**Action:** Preserve the fix restoring the opening brace on the CalendarScreen declaration. Confirm the failed run's parser errors came from this missing brace, then verify the next workflow's unit-test and APK-build steps.
+**Files:** `ui/calendar/CalendarScreen.kt`, build workflow.
 
-**Verification:** Latest workflow for the feature branch has successful `Run Unit Tests`, `Assemble Debug APK`, and `Upload Debug APK` steps.
+**Action:** Restore the missing opening brace in `CalendarScreen`, inspect the parser errors, and run the CI test/build pipeline.
 
-**Status:** The brace fix is committed; latest run had passed unit tests and was assembling the APK at plan creation.
+**Why:** The initial calendar patch broke parsing, so subsequent work must not rest on an unverified source state.
 
-## Task DYX-002 — Cycle home, calendar, and calendar performance
+**Verification:** The fix was committed and a later workflow passed unit tests, `assembleDebug` and upload. Additional current-head verification is recorded below.
 
-**Files:** `ui/MainScreen.kt`, `ui/calendar/CalendarScreen.kt`, targeted calendar tests.
+**Expected result:** No declaration/parser errors; APK assembly completes.
 
-**Action:** Use the approved Cycle hero, visible Cycle / Pills / Insights navigation labels, a clearly labelled contextual action, consistent Material 3 surfaces, responsive compact sizing, and a cached date index for calendar cells. Keep the date log sheet and cycle edit/delete behavior intact. Add regression tests for phase precedence, period boundaries, pill boundaries, fertile-window dates, and dates beyond the current prediction window.
+- [x] Restore the function body and diagnose the parser failure.
+- [x] Verify a complete test/build/artifact workflow before extending the screens.
 
-**Verification:** Date-state tests prove the expected old precedence; unit tests pass; UI build is successful. Review for off-by-one errors and date-map coverage of the supported calendar scroll range.
+## Task DYX-002 — Cycle home, calendar and date-cell performance
 
-**Status:** Initial implementation committed; regression tests and build review remain.
+**Goal:** Implement the new Cycle entry point and remove repeated calendar-cell data scans.
 
-## Task DYX-003 — Insights screen and chart cost
+**Files:** `ui/MainScreen.kt`, `ui/calendar/CalendarScreen.kt`, `app/src/test/java/com/ben/periodt/uiux/shared/CalendarDateIndexTests.kt`.
 
-**Files:** `ui/overview/OverviewScreen.kt`, targeted statistics tests.
+**Action:** Add the Cycle hero with honest prediction-state text and a connected Log action; label navigation; index phase, cycle and pill data for the calendar's full month-navigation range; cache per-cycle daily-log counts; collect pill-pack state once.
 
-**Action:** Add a clear Insights heading and compact summary hierarchy; make metric and chart cards consistent with Elya's surfaces and shape tokens; improve empty states and chart labels. Compute chart series / distributions once per `cycles` + `dailyLogs` change instead of each being derived independently when feasible. Keep charts horizontally scrollable and retain all real recorded data.
+**Why:** The previous day cell searched cycles and packs separately for the current, previous and next date. History rows also rescanned all daily logs.
 
-**Verification:** Unit tests cover empty data, one cycle, and daily overrides; chart values match existing stored data; navigation and charts compile in both themes.
+**Verification:** Five date-index tests cover overlap priority, pill priority, the exclusive prediction end, paused fertile-window states and adjacent-day range highlights.
 
-## Task DYX-004 — Pills screen
+**Expected result:** Calendar dates use constant-time map lookups when composing cells; saved cycle and pill rules remain unchanged.
 
-**Files:** `ui/pill/PillTrackerScreen.kt`, `ui/MainScreen.kt` if a callback is needed.
+- [x] Add the Cycle hero and connect it to existing log/add-cycle behavior.
+- [x] Add and memoize a bounded day index with correct navigation bounds.
+- [x] Cache history log counts and remove nested StateFlow collection.
+- [x] Add date-boundary and phase-precedence regression coverage.
 
-**Action:** Improve active-pack and post-pill mode hierarchy; show pack progress with a labelled, accessible indicator; make setup available in the content area as well as the contextual action; render history efficiently while preserving deletion. Add confirmation before stopping pill tracking if the existing stop operation is destructive and can change prediction mode.
+## Task DYX-003 — Insights hierarchy and chart performance
 
-**Verification:** Exercise active-pack, no-pack, discovery, learning, normal, and completed-history states; confirm controls call existing ViewModel operations and that data/history survive navigation.
+**Goal:** Make Insights a clear, readable summary and eliminate redundant analytics passes.
 
-## Task DYX-005 — Onboarding, Settings, and global consistency
+**Files:** `ui/overview/OverviewScreen.kt`, `app/src/test/java/com/ben/periodt/uiux/shared/InsightsSeriesTests.kt`.
 
-**Files:** `ui/onboarding/OnboardingPager.kt`, any separate animated background composable, `ui/overview/SettingsScreen.kt`, `ui/theme/Apptheme.kt`, and shared surface components as needed.
+**Action:** Add an Insights heading and helpful empty state; use semantic MaterialTheme tokens for cards and labels; remove an unused recent-trends calculation; derive bleeding, pain and blood-color data in one memoized chronological pass.
 
-**Action:** Apply Elya palette, MaterialTheme typography, shape, and spacing tokens to onboarding/settings/profile surfaces; retain all help, privacy, backup, appearance, and import/export functions. Reduce unnecessarily continuous or full-screen animation work where inspection identifies it as a lag contributor, without removing the brand's visual character.
+**Why:** The hidden recent-trends block did work even though its display was commented out. The three charts each independently walked the full cycle history.
 
-**Verification:** Compile all screens, preserve dark/light/system preference behavior, review screen states at compact dimensions and with larger text, and ensure no missing buttons/routes.
+**Verification:** Three tests cover empty history, per-day overrides and chronological counts; chart empty states and scrolling are retained.
 
-## Task DYX-006 — Accessibility, performance, and release gate
+**Expected result:** All three charts use the same memoized source projection, without changing historical values.
 
-**Files:** touched screens, tests, and repository documentation as needed.
+- [x] Add the Insights heading, subtitle and shared surface/text tokens.
+- [x] Remove the unused recent-trends calculation.
+- [x] Consolidate the three chart projections into one memoized pass.
+- [x] Add tests for empty results, daily overrides and chronological order.
 
-**Action:** Add selected-state semantics to custom navigation; verify button labels, contrast, touch target sizes, chart labels and empty states; inspect Compose APIs against current Context7 documentation. Check the full branch diff and review the approved proposal item by item.
+## Task DYX-004 — Pills screen and history
 
-**Verification:** Fresh GitHub Actions run passes unit tests and `assembleDebug`, uploaded debug APK is retrievable and non-empty, artifact link is verified, and PR diff contains no unrelated data-model changes. If interactive device profiling is unavailable, report that limitation explicitly rather than claiming measured FPS improvement.
+**Goal:** Make pack setup and state changes explicit, and scale better with long histories.
+
+**Files:** `ui/pill/PillTrackerScreen.kt`, `ui/MainScreen.kt`.
+
+**Action:** Use a keyed LazyColumn for the screen and pack history; provide an in-content setup action connected to the existing setup dialog; apply theme tokens; ask for confirmation before stopping the active pack.
+
+**Why:** A normal `Column` composed every history row, and pill setup was largely dependent on the contextual bottom action.
+
+**Verification:** The active pack still uses the existing ViewModel; stop confirmation calls the original `stopPillTracking()` only on confirm and clearly states that history is retained.
+
+**Expected result:** History rows are composed lazily, setup is discoverable, and stopping is deliberate.
+
+- [x] Convert pack history to a stable-key lazy list.
+- [x] Add and wire the setup call-to-action.
+- [x] Add an explicit confirmation for the pack-stop state change.
+
+## Task DYX-005 — Onboarding, Settings and shared surfaces
+
+**Goal:** Make the whole app feel like the same Elya product instead of a branded home surrounded by upstream styles.
+
+**Files:** `ui/onboarding/OnboardingWidgets.kt`, `ui/overview/SettingsScreen.kt`, `ui/profiles/ProfileComponents.kt`, `ui/overview/FeedbackComponents.kt`, `ui/calendar/CalendarScreen.kt`, theme components.
+
+**Action:** Apply semantic Material 3 colors to onboarding actions, settings, profile/feedback dialogs and calendar surfaces. Keep the icon pattern but stop the infinite full-screen canvas redraw. Retain privacy, backups, reminders, appearance selection, import/export and profile operations.
+
+**Why:** Continuous decorative redraws cost work with no interaction value, and hardcoded upstream palettes made dialogs and settings visually inconsistent.
+
+**Verification:** Full app compile and existing functions/tests. Theme preference still resolves through the existing light/dark/system setting.
+
+**Expected result:** Elya's ivory/blush/rose/plum and dark palettes are consistent across primary screens and sheets without changing business behavior.
+
+- [x] Remove infinite decorative canvas animation while retaining the visual pattern.
+- [x] Use MaterialTheme tokens for Settings, onboarding actions, profile/feedback surfaces and the calendar card.
+- [x] Preserve the existing settings and profile actions.
+
+## Task DYX-006 — Accessibility, final verification and artifact
+
+**Goal:** Verify the complete branch and deliver an actual APK.
+
+**Files:** custom navigation, touched screens, regression tests, CI artifact.
+
+**Action:** Mark the selected tab semantically, check the full PR diff, run current CI, retrieve the uploaded APK and record its size/checksum. Review current Compose APIs with Context7, and apply Dyslex.ai accessibility/task-sequencing guidance without weakening Superpowers test/verification gates.
+
+**Verification:** Current source-code commit `10df8da023a1ce1eba706aa28138b6e3df8e991b` workflow `40884781337` passed unit tests, `assembleDebug` and APK upload. Artifact `12902073012` was retrieved as a ZIP and contained `app-debug.apk` (53,006,044 bytes; SHA-256 `134300d3956ae1ae8f53084b60d89153d48db40207db144ea376c78988458d0d`). Source/artifact integrity checks passed. A device profiler / physical handset is not available here, so no numeric FPS or real-device responsiveness claim is made.
+
+**Expected result:** Reviewable PR and a non-empty debug APK whose build, tests and artifact existance have been verified.
+
+- [x] Add TalkBack selected-state semantics to primary navigation.
+- [x] Use current Context7 documentation and review accessibility labels/empty states.
+- [x] Verify the application-code build, tests and artifact.
+- [ ] Run on-device profile / visual smoke test when an Android device or emulator is available.
 
 ---
 
-## Ledger
+## Implementation Ledger
 
-- Ruling: implement on `feat/elya-brand-system`, not `main` — keeps the approved overhaul reviewable and rollback-safe — cost if wrong: an extra PR review cycle.
-- Ruling: remove the unused Haze rendering layer rather than replacing it with another blur — no `hazeChild` surfaces used the existing Haze state, so the layer added cost without effect — cost if wrong: any subtle blur appearance would be lost; review screenshots.
-- Finding: the prior date-cell code repeatedly scanned all cycles and pill packs three times for each calendar date, and repeated daily-log counting for each history row. The indexed implementation targets that CPU work; real-device performance still requires profiling.
-- Finding: CI for the initial implementation failed at Kotlin parsing due to a missing `{` after the new `CalendarScreen` function declaration. The brace was restored; verify the fresh workflow before extending this claim.
+- **Ruling:** Keep work on `feat/elya-brand-system`, not `main`, so the redesign remains reviewable and rollback-safe.
+- **Ruling:** Remove Haze from the main screen because the old Haze state had no `hazeChild` surfaces; it added a rendering layer without contributing a visible blur.
+- **Measured by source inspection:** Calendar repeated per-cell cycle/pill scans were replaced with a date index; history daily-log counts are precomputed; Insights charts share one derived data pass; Pill history is lazy; onboarding's perpetual canvas transition is static.
+- **Verification:** CI success for application-code commit `10df8da023a1ce1eba706aa28138b6e3df8e991b` is run `40884781337`. Artifact `12902073012` was retrieved and checked.
+- **Known limitation:** No physical-device/Emulator frame trace or pixel-level screenshot run was available. The lag-related source hotspots were addressed, but a measured frames-per-second gain cannot be claimed.
+- **Next action:** Run final CI on the documentation-updated branch head, confirm artifact upload, update the PR summary, then deliver the verified APK and links.
