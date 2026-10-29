@@ -220,15 +220,15 @@ internal fun buildCalendarDayIndex(
  * Upward movement collapses the month grid; downward movement expands it only at the history list's top.
  */
 internal fun nextCalendarCollapsedState(
-    deltaY: Float,
+    accumulatedDeltaY: Float,
     isCollapsed: Boolean,
     historyAtTop: Boolean,
     thresholdPx: Float
 ): Boolean? {
     require(thresholdPx >= 0f) { "thresholdPx must not be negative" }
     return when {
-        deltaY < -thresholdPx && !isCollapsed -> true
-        deltaY > thresholdPx && isCollapsed && historyAtTop -> false
+        accumulatedDeltaY < -thresholdPx && !isCollapsed -> true
+        accumulatedDeltaY > thresholdPx && isCollapsed && historyAtTop -> false
         else -> null
     }
 }
@@ -285,6 +285,7 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
 
     val listState  = rememberLazyListState()
     var isCollapsed by remember { mutableStateOf(false) }
+    var accumulatedVerticalScroll by remember { mutableFloatStateOf(0f) }
     val collapseThresholdPx = with(LocalDensity.current) { 16.dp.toPx() }
 
     // Keep both calendar modes aligned without starting a second animation during a vertical swipe.
@@ -307,13 +308,22 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
     val nestedScrollConnection = remember(collapseThresholdPx) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val historyAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                when {
+                    !isCollapsed && available.y < 0f -> accumulatedVerticalScroll += available.y
+                    isCollapsed && historyAtTop && available.y > 0f -> accumulatedVerticalScroll += available.y
+                    else -> accumulatedVerticalScroll = 0f
+                }
                 val nextState = nextCalendarCollapsedState(
-                    deltaY = available.y,
+                    accumulatedDeltaY = accumulatedVerticalScroll,
                     isCollapsed = isCollapsed,
-                    historyAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+                    historyAtTop = historyAtTop,
                     thresholdPx = collapseThresholdPx
                 )
-                if (nextState != null) isCollapsed = nextState
+                if (nextState != null) {
+                    isCollapsed = nextState
+                    accumulatedVerticalScroll = 0f
+                }
                 return Offset.Zero
             }
         }

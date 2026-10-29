@@ -10,24 +10,24 @@ class CalendarScrollBehaviorTests {
 
     @Test
     fun ignoresSmallScrollNoiseInsteadOfCollapsingCalendar() {
-        assertNull(nextCalendarCollapsedState(deltaY = -5f, isCollapsed = false, historyAtTop = true, thresholdPx = threshold))
-        assertNull(nextCalendarCollapsedState(deltaY = 5f, isCollapsed = true, historyAtTop = true, thresholdPx = threshold))
+        assertNull(nextCalendarCollapsedState(accumulatedDeltaY = -5f, isCollapsed = false, historyAtTop = true, thresholdPx = threshold))
+        assertNull(nextCalendarCollapsedState(accumulatedDeltaY = 5f, isCollapsed = true, historyAtTop = true, thresholdPx = threshold))
     }
 
     @Test
     fun collapsesExpandedCalendarAfterAnIntentionalUpwardSwipe() {
-        assertEquals(true, nextCalendarCollapsedState(deltaY = -24f, isCollapsed = false, historyAtTop = true, thresholdPx = threshold))
+        assertEquals(true, nextCalendarCollapsedState(accumulatedDeltaY = -24f, isCollapsed = false, historyAtTop = true, thresholdPx = threshold))
     }
 
     @Test
     fun expandsCollapsedCalendarOnDownwardSwipeOnlyWhenHistoryIsAtTop() {
-        assertEquals(false, nextCalendarCollapsedState(deltaY = 24f, isCollapsed = true, historyAtTop = true, thresholdPx = threshold))
-        assertNull(nextCalendarCollapsedState(deltaY = 24f, isCollapsed = true, historyAtTop = false, thresholdPx = threshold))
+        assertEquals(false, nextCalendarCollapsedState(accumulatedDeltaY = 24f, isCollapsed = true, historyAtTop = true, thresholdPx = threshold))
+        assertNull(nextCalendarCollapsedState(accumulatedDeltaY = 24f, isCollapsed = true, historyAtTop = false, thresholdPx = threshold))
     }
 
     @Test
     fun doesNotRequestTheCurrentCalendarStateAgain() {
-        assertNull(nextCalendarCollapsedState(deltaY = -24f, isCollapsed = true, historyAtTop = true, thresholdPx = threshold))
-        assertNull(nextCalendarCollapsedState(deltaY = 24f, isCollapsed = false, historyAtTop = true, thresholdPx = threshold))
+        assertNull(nextCalendarCollapsedState(accumulatedDeltaY = -24f, isCollapsed = true, historyAtTop = true, thresholdPx = threshold))
+        assertNull(nextCalendarCollapsedState(accumulatedDeltaY = 24f, isCollapsed = false, historyAtTop = true, thresholdPx = threshold))
     }
 }
