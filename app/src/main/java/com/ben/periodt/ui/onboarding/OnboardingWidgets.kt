@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -137,14 +139,16 @@ fun OnboardingButton(text: String, onClick: () -> Unit) {
     val btnColor = MaterialTheme.colorScheme.primary
     val txtColor = MaterialTheme.colorScheme.onPrimary
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(btnColor)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(58.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = btnColor,
+            contentColor = txtColor
+        ),
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
     ) {
         Text(
             text = text,

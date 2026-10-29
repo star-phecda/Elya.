@@ -280,7 +280,12 @@ private fun MainScreenContent(isDark: Boolean) {
                         modifier = Modifier.width(actionWidth).height(dimens.barHeight)
                             .shadow(5.dp, RoundedCornerShape(percent = 50), ambientColor = Color.Black.copy(alpha = 0.10f), spotColor = Color.Black.copy(alpha = 0.12f))
                             .clip(RoundedCornerShape(percent = 50)).background(MaterialTheme.colorScheme.primary)
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = androidx.compose.foundation.LocalIndication.current) {
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = androidx.compose.foundation.LocalIndication.current,
+                                onClickLabel = actionLabel,
+                                role = Role.Button
+                            ) {
                                 when (currentRoute) {
                                     Screen.Pill.route -> showAddPillDialog = true
                                     Screen.Overview.route -> showRemindersSheet = true
