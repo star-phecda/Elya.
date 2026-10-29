@@ -185,8 +185,9 @@ internal fun buildCalendarDayIndex(
     val phasesByDay = HashMap<LocalDate, Int>()
     val cyclesByDay = HashMap<LocalDate, PeriodViewModel.Cycle>()
     val packsByDay = HashMap<LocalDate, PeriodViewModel.PillPack>()
-    var day = today.minusWeeks(55)
-    val lastDay = today.plusWeeks(55)
+    val currentMonth = YearMonth.from(today)
+    var day = currentMonth.minusMonths(12).atDay(1).minusDays(1)
+    val lastDay = currentMonth.plusMonths(12).atEndOfMonth().plusDays(1)
     while (!day.isAfter(lastDay)) {
         val cycle = cycles.firstOrNull { c ->
             val end = c.endDate ?: c.startDate.plusDays(6)

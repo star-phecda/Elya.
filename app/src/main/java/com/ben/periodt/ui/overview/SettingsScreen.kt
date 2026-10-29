@@ -147,24 +147,12 @@ fun SettingsScreen(
     }
 
     val isDark = LocalAppIsDark.current
-    val bgGradient = if (isDark) {
-        Brush.linearGradient(
-            0.0f to Color(0xFF171117), 0.7f to Color(0xFF171117), 1.0f to Color(0xFF171117),
-            start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    } else {
-        Brush.linearGradient(
-            colors = listOf(Color(0xFFFFF8F5), Color(0xFFF7EAF0)),
-            start  = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    }
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
 
-    val surfaceColor = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
-    val textPrimary  = if (isDark) Color.White else Color(0xFF321B28)
-    val textSub      = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
-    val accentColor  = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
-
-    Box(modifier = Modifier.fillMaxSize().background(bgGradient)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

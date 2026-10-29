@@ -68,16 +68,8 @@ fun AnimatedIconBackground() {
         color = iconColor
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "bg_drift")
-    val angle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(40000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "angle"
-    )
+    // Keep the icon motif calm and static instead of forcing a full-canvas redraw every frame.
+    val angle = 34f
 
     val density = LocalDensity.current
     val iconSize = with(density) { 24.dp.toPx() }
@@ -142,9 +134,8 @@ fun AnimatedIconBackground() {
 
 @Composable
 fun OnboardingButton(text: String, onClick: () -> Unit) {
-    val isDark = isSystemInDarkTheme()
-    val btnColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
-    val txtColor = if (isDark) Color(0xFF1B1B1B) else Color.White
+    val btnColor = MaterialTheme.colorScheme.primary
+    val txtColor = MaterialTheme.colorScheme.onPrimary
 
     Box(
         modifier = Modifier

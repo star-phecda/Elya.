@@ -128,9 +128,9 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
     val onGradient      = if (isDark) Color(0xFFFFF2F7) else Color(0xFF613248)
     val onGradientMuted = if (isDark) onGradient.copy(alpha = 0.70f) else Color(0xFF795C6B)
 
-    val surface = if (isDark) Color(0xFF21161F) else Color(0xFFFFFAF7)
-    val textCol = if (isDark) Color(0xFFFFF3F7) else Color(0xFF321B28)
-    val subCol  = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
+    val surface = MaterialTheme.colorScheme.surface
+    val textCol = MaterialTheme.colorScheme.onSurface
+    val subCol  = MaterialTheme.colorScheme.onSurfaceVariant
 
     val bleedingChartColor = Color(0xFFB95F83)
     val painChartColor     = if (isDark) Color(0xFF9B7890) else Color(0xFFC87898)
@@ -140,36 +140,6 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
 
     val dailyLogs by viewModel.dailyLogs.collectAsState()
 
-    val recentTrends = remember(cycles, dailyLogs) {
-        val recentCycles = cycles.sortedBy { it.startDate }.takeLast(6)
-        if (recentCycles.isEmpty()) return@remember null
-
-        var totalPain = 0; var totalDays = 0
-        val bleedingCounts = mutableMapOf<String, Int>()
-        val colorCounts    = mutableMapOf<String, Int>()
-
-        recentCycles.forEach { cycle ->
-            val end = cycle.endDate ?: cycle.startDate.plusDays(4)
-            var day = cycle.startDate
-            while (!day.isAfter(end)) {
-                val key = "${cycle.id}|$day"
-                val b   = dailyLogs[key]?.bleeding   ?: cycle.bleeding
-                val c   = dailyLogs[key]?.bloodColor ?: cycle.bloodColor
-                val p   = dailyLogs[key]?.painLevel  ?: cycle.painLevel
-                bleedingCounts[b] = (bleedingCounts[b] ?: 0) + 1
-                colorCounts[c]    = (colorCounts[c]    ?: 0) + 1
-                totalPain += p; totalDays++
-                day = day.plusDays(1)
-            }
-        }
-        if (totalDays == 0) return@remember null
-        Triple(
-            bleedingCounts.maxByOrNull { it.value }?.key ?: "Medium",
-            colorCounts.maxByOrNull    { it.value }?.key ?: "Bright Red",
-            round(totalPain.toFloat() / totalDays).toInt()
-        )
-    }
-    val recentCyclesCount = minOf(cycles.size, 6)
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
         Column(
@@ -183,6 +153,29 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
 //            if (!isOnPill && !isDiscoveryMode && !isLearningMode) {
 //                RecentTrendsBanner(trends = recentTrends, cycleCount = recentCyclesCount)
 //            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Insights",
+                    fontFamily = BricolageGrotesque,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = if (cycles.isEmpty()) {
+                        "Your cycle patterns will appear here as you log."
+                    } else {
+                        "${cycles.size} recorded ${if (cycles.size == 1) "cycle" else "cycles"} · estimates are guides, not guarantees"
+                    },
+                    fontFamily = BricolageGrotesque,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             CombinedStatsCard(
                 totalCycles = "${cycles.size}",
@@ -288,10 +281,10 @@ private fun CombinedStatsCard(
     val interactionSource = remember { MutableInteractionSource() }
 
     val isDark       = LocalAppIsDark.current
-    val surfaceColor = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
-    val dividerColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f)
-    val valueColor   = if (isDark) Color.White else Color(0xFF321B28)
-    val titleColor   = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
+    val valueColor   = MaterialTheme.colorScheme.onSurface
+    val titleColor   = MaterialTheme.colorScheme.onSurfaceVariant
 
     val gentleSpring = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 
@@ -417,7 +410,7 @@ private fun MinimalChartCard(
     content: @Composable () -> Unit
 ) {
     val isDark      = LocalAppIsDark.current
-    val cardSurface = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
+    val cardSurface = MaterialTheme.colorScheme.surface
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -472,7 +465,7 @@ private fun BloodColorPieChart(
     val total       = data.sumOf { it.second.toDouble() }.toFloat().coerceAtLeast(0.0001f)
     val legendItems = data.map { (label, value) ->
         val cleanLabel = label.lowercase().trim()
-        Triple(label.replaceFirstChar { it.uppercase() }, (value / total) * 100f, colorMap[cleanLabel] ?: Color.Gray)
+        Triple(label.replaceFirstChar { it.uppercase() }, (value / total) * 100f, colorMap[cleanLabel] ?: MaterialTheme.colorScheme.tertiary)
     }
 
     Column(modifier = modifier) {

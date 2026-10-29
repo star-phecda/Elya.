@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,7 +123,7 @@ fun SmoothBottomNavigation(
             val tint by animateColorAsState(if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant, tween(180), label = "navigationItemTint")
             Column(
                 modifier = Modifier.width(itemWidth).fillMaxHeight().clip(RoundedCornerShape(24.dp)).background(itemBg)
-                    .clickable(onClick = { onNavigate(screen.route) }).padding(horizontal = 2.dp, vertical = 5.dp),
+                    .selectable(selected = selected, onClick = { onNavigate(screen.route) }, role = Role.Tab).padding(horizontal = 2.dp, vertical = 5.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
             ) {
                 Icon(screen.icon, contentDescription = screen.label, tint = tint, modifier = Modifier.size(if (selected) 21.dp else 19.dp))
@@ -252,7 +254,7 @@ private fun MainScreenContent(isDark: Boolean) {
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)
         ) {
             composable(Screen.Calendar.route) { CalendarScreen(viewModel, onAddCycleClick = { showAddCycleDialog = true }) }
-            composable(Screen.Pill.route) { PillTrackerScreen(viewModel) }
+            composable(Screen.Pill.route) { PillTrackerScreen(viewModel, onSetupClick = { showAddPillDialog = true }) }
             composable(Screen.Overview.route) { OverviewScreen(viewModel) }
             composable(
                 route = Screen.Settings.route,
