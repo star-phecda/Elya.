@@ -1,5 +1,5 @@
 <p align="center">
-<img width="200" height="200" alt="logo 1" src="fastlane/metadata/android/en-US/images/icon.png" />
+<img width="200" height="200" alt="Elya floral logo" src="app/src/main/res/drawable/elya_logo.webp" />
 </p>
 <h1 align="center">Elya: Track & Predict Cycles</h1>
 <p align="center">
