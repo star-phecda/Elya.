@@ -82,7 +82,11 @@ class CalendarDateIndexTests {
         val index = buildCalendarDayIndex(
             today = today,
             cycles = emptyList(),
-            prediction = prediction(periodStart = start, periodLength = 3),
+            prediction = prediction(
+                periodStart = start,
+                periodLength = 3,
+                fertileWindow = LocalDate.of(2020, 1, 1)..LocalDate.of(2020, 1, 7)
+            ),
             transitioning = false,
             onPill = false,
             packs = emptyList()

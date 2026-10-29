@@ -166,7 +166,7 @@ private val SIZE_LG  = 15.sp
 private val SIZE_XL  = 20.sp
 
 
-private data class CalendarDayIndex(
+internal data class CalendarDayIndex(
     val phases: Map<LocalDate, Int>,
     val cycles: Map<LocalDate, PeriodViewModel.Cycle>,
     val packs: Map<LocalDate, PeriodViewModel.PillPack>,
@@ -174,7 +174,7 @@ private data class CalendarDayIndex(
     val ovulationDay: LocalDate?
 )
 
-private fun buildCalendarDayIndex(
+internal fun buildCalendarDayIndex(
     today: LocalDate,
     cycles: List<PeriodViewModel.Cycle>,
     prediction: Prediction?,
