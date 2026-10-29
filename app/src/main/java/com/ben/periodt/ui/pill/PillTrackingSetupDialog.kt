@@ -85,15 +85,16 @@ fun PillTrackingSetupDialog(
     }
 
     val isDark = LocalAppIsDark.current
-    val accentColor     = Color(0xFFa68e74)
-    val pastelGreen     = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-    val pastelOrange    = Color(0xFFa68e74)
-    val pastelMaroon    = Color(0xFF4E1A1A)
-    val containerColor  = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary     = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val surfaceFallback = if (isDark) Color.Black else Color.Black.copy(alpha = 0.05f)
-    val pillBackground  = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+    val scheme = MaterialTheme.colorScheme
+    val accentColor = scheme.primary
+    val pastelGreen = scheme.primaryContainer
+    val pastelOrange = scheme.tertiaryContainer
+    val pastelMaroon = scheme.errorContainer
+    val containerColor = scheme.surface
+    val textPrimary = scheme.onSurface
+    val textSub = scheme.onSurfaceVariant
+    val surfaceFallback = scheme.surfaceVariant
+    val pillBackground = scheme.surfaceVariant
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

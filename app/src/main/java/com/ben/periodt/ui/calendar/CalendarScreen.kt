@@ -571,17 +571,17 @@ fun DayLogDialog(
     onClear: () -> Unit
 ) {
     val isDark = LocalAppIsDark.current
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surface
+    val accentColor = scheme.primary
+    val surfaceFallback = scheme.surfaceVariant
+    val pillBackground = scheme.surfaceVariant
+    val textPrimary = scheme.onSurface
+    val textSub = scheme.onSurfaceVariant
 
-    val containerColor  = if (isDark) Color(0xFF2A1C26) else Color.White
-    val accentColor     = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
-    val surfaceFallback = if (isDark) Color.Black else Color.Black.copy(alpha = 0.05f)
-    val pillBackground  = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-    val textPrimary     = if (isDark) Color.White else Color(0xFF321B28)
-    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
-
-    val pastelGreen  = if (isDark) Color(0xFF482538) else Color(0xFFF4DFE7)
-    val pastelOrange = Color(0xFFA77C91)
-    val pastelMaroon = Color(0xFF4E1A1A)
+    val pastelGreen = scheme.primaryContainer
+    val pastelOrange = scheme.tertiaryContainer
+    val pastelMaroon = scheme.errorContainer
 
     val bleedingOptions = listOf("Heavy", "Medium", "Light", "Spotting")
     val colorOptions    = listOf("Bright Red", "Dark Red", "Brown")
