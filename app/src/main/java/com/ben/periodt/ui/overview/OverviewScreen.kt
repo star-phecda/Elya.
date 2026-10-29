@@ -103,6 +103,59 @@ private val SIZE_MD  = 14.sp
 private val SIZE_LG  = 15.sp
 private val SIZE_XL  = 20.sp
 
+internal data class InsightsChartSeries(
+    val points: List<Pair<Float, Float>>,
+    val dates: List<String>
+)
+
+internal data class InsightsSeries(
+    val bleeding: InsightsChartSeries,
+    val pain: InsightsChartSeries,
+    val bloodColorDistribution: List<Pair<String, Float>>
+)
+
+/** Derive all Insights charts in one pass; retain existing day-log and duration fallback semantics. */
+internal fun buildInsightsSeries(
+    cycles: List<PeriodViewModel.Cycle>,
+    dailyLogs: Map<String, PeriodViewModel.DailyLog>
+): InsightsSeries {
+    val bleedingScale = mapOf("spotting" to 0.5f, "light" to 1f, "medium" to 2f, "heavy" to 3f)
+    val formatter = DateTimeFormatter.ofPattern("MMM d")
+    val bleedingPoints = mutableListOf<Pair<Float, Float>>()
+    val painPoints = mutableListOf<Pair<Float, Float>>()
+    val dates = mutableListOf<String>()
+    val bloodColorCounts = linkedMapOf<String, Int>()
+    val orderedCycles = cycles.sortedBy { it.startDate }
+    var index = 0
+
+    orderedCycles.forEach { cycle ->
+        val end = cycle.endDate ?: cycle.startDate.plusDays(4)
+        var day = cycle.startDate
+        while (!day.isAfter(end)) {
+            val log = dailyLogs["${cycle.id}|$day"]
+            val bleeding = (log?.bleeding ?: cycle.bleeding).lowercase()
+            val bloodColor = (log?.bloodColor ?: cycle.bloodColor).lowercase()
+            bleedingPoints.add(index.toFloat() to (bleedingScale[bleeding] ?: 0f))
+            painPoints.add(index.toFloat() to (log?.painLevel ?: cycle.painLevel).toFloat())
+            bloodColorCounts[bloodColor] = (bloodColorCounts[bloodColor] ?: 0) + 1
+            dates.add(day.format(formatter))
+            day = day.plusDays(1)
+            index++
+        }
+    }
+
+    val totalColorDays = bloodColorCounts.values.sum()
+    val distribution = if (totalColorDays == 0) emptyList() else {
+        bloodColorCounts.entries.sortedByDescending { it.value }
+            .map { it.key to (it.value.toFloat() / totalColorDays) }
+    }
+    return InsightsSeries(
+        bleeding = InsightsChartSeries(bleedingPoints.toList(), dates.toList()),
+        pain = InsightsChartSeries(painPoints.toList(), dates.toList()),
+        bloodColorDistribution = distribution
+    )
+}
+
 @Composable
 fun OverviewScreen(viewModel: PeriodViewModel) {
     val cycles        by viewModel.cycles.collectAsState()
@@ -140,7 +193,9 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
     val avgCycleLength  = calculateAvgCycleLength(cycles)
 
     val dailyLogs by viewModel.dailyLogs.collectAsState()
-
+    val insightsSeries = remember(cycles, dailyLogs) {
+        buildInsightsSeries(cycles, dailyLogs)
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
         Column(
@@ -229,7 +284,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Bleeding intensity", surface, textCol) {
-                val (bleedingPoints, bleedingDates) = remember(cycles, dailyLogs) { bleedingSeriesDailyVM(cycles, dailyLogs) }
+                val bleedingPoints = insightsSeries.bleeding.points
+                val bleedingDates = insightsSeries.bleeding.dates
                 ScrollableLineChart(
                     points = bleedingPoints, dates = bleedingDates, lineColor = bleedingChartColor,
                     yLabels = listOf("S", "L", "M", "H"), yMax = 3f, showArea = true,
@@ -243,7 +299,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Pain level", surface, textCol) {
-                val (painPoints, painDates) = remember(cycles, dailyLogs) { painSeriesDailyVM(cycles, dailyLogs) }
+                val painPoints = insightsSeries.pain.points
+                val painDates = insightsSeries.pain.dates
                 ScrollableLineChart(
                     points = painPoints, dates = painDates, lineColor = painChartColor,
                     yLabels = (0..10 step 2).map { "$it" }, yMax = 10f, showArea = true,
@@ -258,7 +315,7 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
 
             MinimalChartCard("Blood color", surface, textCol) {
                 BloodColorPieChart(
-                    data       = remember(cycles, dailyLogs) { bloodColorDistributionVM(cycles, dailyLogs) },
+                    data       = insightsSeries.bloodColorDistribution,
                     surface    = surface,
                     labelColor = subCol,
                     modifier   = Modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 8.dp)
@@ -678,63 +735,6 @@ private fun LineChartContent(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-private fun bleedingSeriesDailyVM(
-    cycles: List<PeriodViewModel.Cycle>,
-    dailyLogs: Map<String, PeriodViewModel.DailyLog>
-): Pair<List<Pair<Float, Float>>, List<String>> {
-    val map       = mapOf("spotting" to 0.5f, "light" to 1f, "medium" to 2f, "heavy" to 3f)
-    val formatter = DateTimeFormatter.ofPattern("MMM d")
-    val points    = mutableListOf<Pair<Float, Float>>()
-    val dates     = mutableListOf<String>()
-    var index     = 0
-    cycles.sortedBy { it.startDate }.forEach { cycle ->
-        val end = cycle.endDate ?: cycle.startDate.plusDays(4); var day = cycle.startDate
-        while (!day.isAfter(end)) {
-            val key = "${cycle.id}|$day"
-            points.add(index.toFloat() to (map[(dailyLogs[key]?.bleeding ?: cycle.bleeding).lowercase()] ?: 0f))
-            dates.add(day.format(formatter)); day = day.plusDays(1); index++
-        }
-    }
-    return points to dates
-}
-
-private fun painSeriesDailyVM(
-    cycles: List<PeriodViewModel.Cycle>,
-    dailyLogs: Map<String, PeriodViewModel.DailyLog>
-): Pair<List<Pair<Float, Float>>, List<String>> {
-    val formatter = DateTimeFormatter.ofPattern("MMM d")
-    val points    = mutableListOf<Pair<Float, Float>>()
-    val dates     = mutableListOf<String>()
-    var index     = 0
-    cycles.sortedBy { it.startDate }.forEach { cycle ->
-        val end = cycle.endDate ?: cycle.startDate.plusDays(4); var day = cycle.startDate
-        while (!day.isAfter(end)) {
-            val key = "${cycle.id}|$day"
-            points.add(index.toFloat() to (dailyLogs[key]?.painLevel ?: cycle.painLevel).toFloat())
-            dates.add(day.format(formatter)); day = day.plusDays(1); index++
-        }
-    }
-    return points to dates
-}
-
-private fun bloodColorDistributionVM(
-    cycles: List<PeriodViewModel.Cycle>,
-    dailyLogs: Map<String, PeriodViewModel.DailyLog>
-): List<Pair<String, Float>> {
-    val counts = mutableMapOf<String, Int>()
-    cycles.forEach { cycle ->
-        val end = cycle.endDate ?: cycle.startDate.plusDays(4); var day = cycle.startDate
-        while (!day.isAfter(end)) {
-            val key = "${cycle.id}|$day"
-            val color = (dailyLogs[key]?.bloodColor ?: cycle.bloodColor).lowercase()
-            counts[color] = (counts[color] ?: 0) + 1; day = day.plusDays(1)
-        }
-    }
-    val total = counts.values.sum()
-    if (total == 0) return emptyList()
-    return counts.entries.sortedByDescending { it.value }.map { it.key to (it.value.toFloat() / total) }
-}
-
 private fun calculateAvgCycleLength(cycles: List<PeriodViewModel.Cycle>): Int? {
     val lengths = cycles.sortedBy { it.startDate }.zipWithNext { a, b ->
         ChronoUnit.DAYS.between(a.startDate, b.startDate).toInt()

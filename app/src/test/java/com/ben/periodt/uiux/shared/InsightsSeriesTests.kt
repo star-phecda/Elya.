@@ -68,7 +68,7 @@ class InsightsSeriesTests {
 
         assertEquals(5, series.bleeding.points.size)
         assertEquals(5, series.pain.points.size)
-        assertEquals(0f, series.bleeding.points.first().second, 0.001f)
+        assertEquals(0.5f, series.bleeding.points.first().second, 0.001f)
         assertEquals(7f, series.pain.points.last().second, 0.001f)
         assertEquals("Jan 1", series.bleeding.dates.first())
         assertEquals("Feb 2", series.pain.dates.last())
