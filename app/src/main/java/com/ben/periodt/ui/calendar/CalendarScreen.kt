@@ -550,7 +550,7 @@ private fun CycleHeroCard(
                     maxLines = if (compact) 1 else 2, lineHeight = 16.sp)
             }
             Button(
-                onClick = onLogToday, modifier = Modifier.height(if (compact) 40.dp else 46.dp),
+                onClick = onLogToday, modifier = Modifier.height(48.dp),
                 shape = RoundedCornerShape(16.dp),
                 contentPadding = PaddingValues(horizontal = if (compact) 11.dp else 14.dp, vertical = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White)
