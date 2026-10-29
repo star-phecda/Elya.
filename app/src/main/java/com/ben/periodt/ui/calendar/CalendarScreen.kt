@@ -333,19 +333,19 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
             }
         )
         CalendarCard(
-                isCollapsed     = isCollapsed,
-                state           = state,
-                weekState       = weekState,
-                cycles          = cycles,
-                prediction      = prediction,
-                dayIndex        = dayIndex,
-                isTransitioning = isTransitioning,
-                isLearningMode  = isLearningMode,
-                isOnPill        = isOnPill,
-                pillPacks       = pillPacks,
-                firstDayOfWeek  = firstDayOfWeek,
-                dailyLogs       = dailyLogs,
-                onDayTapped     = { cycle, date -> dayLogTarget = Pair(cycle, date) }
+            isCollapsed     = isCollapsed,
+            state           = state,
+            weekState       = weekState,
+            cycles          = cycles,
+            prediction      = prediction,
+            dayIndex        = dayIndex,
+            isTransitioning = isTransitioning,
+            isLearningMode  = isLearningMode,
+            isOnPill        = isOnPill,
+            pillPacks       = pillPacks,
+            firstDayOfWeek  = firstDayOfWeek,
+            dailyLogs       = dailyLogs,
+            onDayTapped     = { cycle, date -> dayLogTarget = Pair(cycle, date) }
         )
 
         LazyColumn(
