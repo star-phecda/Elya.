@@ -248,10 +248,6 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
                 .padding(bottom = 90.dp)
                 .padding(top = 16.dp)
         ) {
-//            if (!isOnPill && !isDiscoveryMode && !isLearningMode) {
-//                RecentTrendsBanner(trends = recentTrends, cycleCount = recentCyclesCount)
-//            }
-
             Column(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -277,8 +273,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
 
             CombinedStatsCard(
                 totalCycles = "${cycles.size}",
-                avgPeriod   = avgPeriodLength?.let { "$it d" } ?: "0",
-                avgCycle    = avgCycleLength?.let  { "$it d" } ?: "0"
+                avgPeriod   = avgPeriodLength?.let { "$it d" } ?: "—",
+                avgCycle    = avgCycleLength?.let  { "$it d" } ?: "—"
             )
 
             Spacer(Modifier.height(14.dp))

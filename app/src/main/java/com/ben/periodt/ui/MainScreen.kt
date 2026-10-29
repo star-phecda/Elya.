@@ -108,7 +108,8 @@ fun SmoothBottomNavigation(
 ) {
     val dimens = LocalAppDimens.current
     val scheme = MaterialTheme.colorScheme
-    val compact = LocalConfiguration.current.screenWidthDp < 370
+    // Compact the whole dock before it approaches the edges on narrow phones.
+    val compact = LocalConfiguration.current.screenWidthDp < 430
     val itemWidth = if (compact) 60.dp else 72.dp
     val avatarWidth = if (compact) 44.dp else 48.dp
     Row(
@@ -274,8 +275,18 @@ private fun MainScreenContent(isDark: Boolean) {
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val actionLabel = when (currentRoute) { Screen.Pill.route -> "Set up"; Screen.Overview.route -> "Reminders"; else -> "Log today" }
-                    val actionWidth = if (configuration.screenWidthDp >= 390) { if (currentRoute == Screen.Overview.route) 100.dp else 92.dp } else dimens.barHeight
+                    val actionLabel = when (currentRoute) {
+                        Screen.Pill.route -> "Set up"
+                        Screen.Overview.route -> "Reminders"
+                        else -> "Add period"
+                    }
+                    val actionWidth = if (configuration.screenWidthDp >= 430) {
+                        when (currentRoute) {
+                            Screen.Overview.route -> 112.dp
+                            Screen.Pill.route -> 92.dp
+                            else -> 108.dp
+                        }
+                    } else dimens.barHeight
                     Row(
                         modifier = Modifier.width(actionWidth).height(dimens.barHeight)
                             .shadow(5.dp, RoundedCornerShape(percent = 50), ambientColor = Color.Black.copy(alpha = 0.10f), spotColor = Color.Black.copy(alpha = 0.12f))
