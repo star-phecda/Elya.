@@ -169,7 +169,7 @@ fun PillTrackingSetupDialog(
                                 text         = "$count Pills",
                                 isSelected   = selectedPillCount == count,
                                 activeBg     = accentColor,
-                                activeText   = Color.White,
+                                activeText   = MaterialTheme.colorScheme.onPrimary,
                                 inactiveText = textSub,
                                 surface      = surfaceFallback,
                                 onClick      = { selectedPillCount = count }

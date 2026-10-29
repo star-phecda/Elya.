@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -109,6 +110,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -704,7 +706,15 @@ fun DayLogDialog(
                         bleedingOptions.forEach { option ->
                             val isSelected      = bleeding.equals(option, ignoreCase = true)
                             val activePillColor = when (option) { "Heavy" -> pastelMaroon; "Medium" -> pastelOrange; else -> pastelGreen }
-                            EntryStylePill(option, isSelected, activePillColor, Color.White, textSub, surfaceFallback) { bleeding = option }
+                            EntryStylePill(
+                                option, isSelected, activePillColor,
+                                when (option) {
+                                    "Heavy" -> scheme.onErrorContainer
+                                    "Medium" -> scheme.onTertiaryContainer
+                                    else -> scheme.onPrimaryContainer
+                                },
+                                textSub, surfaceFallback
+                            ) { bleeding = option }
                         }
                     }
                 }
@@ -722,7 +732,15 @@ fun DayLogDialog(
                         colorOptions.forEach { option ->
                             val isSelected      = bloodColor.equals(option, ignoreCase = true)
                             val activePillColor = when (option) { "Bright Red" -> pastelGreen; "Dark Red" -> Color(0xFF4E1A1A); "Brown" -> pastelOrange; else -> accentColor }
-                            EntryStylePill(option, isSelected, activePillColor, Color.White, textSub, surfaceFallback) { bloodColor = option }
+                            EntryStylePill(
+                                option, isSelected, activePillColor,
+                                when (option) {
+                                    "Dark Red" -> Color.White
+                                    "Brown" -> scheme.onTertiaryContainer
+                                    else -> scheme.onPrimaryContainer
+                                },
+                                textSub, surfaceFallback
+                            ) { bloodColor = option }
                         }
                     }
                 }
@@ -1211,16 +1229,17 @@ fun EditCycleDialog(
     }
 
     val isDark = LocalAppIsDark.current
-    val containerColor  = if (isDark) Color(0xFF2A1C26) else Color.White
-    val accentColor     = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
-    val surfaceFallback = if (isDark) Color.Black else Color.Black.copy(alpha = 0.05f)
-    val pastelGreen     = if (isDark) Color(0xFF482538) else Color(0xFFF4DFE7)
-    val pastelOrange    = Color(0xFFD89046)
-    val pastelMaroon    = Color(0xFF4E1A1A)
-    val pillBackground  = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-    val pillTextColor   = if (isDark) Color.White else Color(0xFF2A1C26)
-    val textPrimary     = if (isDark) Color.White else Color(0xFF321B28)
-    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF2A1C26)
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surface
+    val accentColor = scheme.primary
+    val surfaceFallback = scheme.surfaceVariant
+    val pastelGreen = scheme.primaryContainer
+    val pastelOrange = scheme.tertiaryContainer
+    val pastelMaroon = scheme.errorContainer
+    val pillBackground = scheme.surfaceVariant
+    val pillTextColor = scheme.onSurface
+    val textPrimary = scheme.onSurface
+    val textSub = scheme.onSurfaceVariant
 
     val formatter  = remember { DateTimeFormatter.ofPattern("MMM dd") }
 
@@ -1342,7 +1361,15 @@ fun EditCycleDialog(
                             bleedingOptions.forEach { option ->
                                 val isSelected = bleeding.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Heavy" -> pastelMaroon; "Medium" -> pastelOrange; else -> pastelGreen }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bleeding = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Heavy" -> scheme.onErrorContainer
+                                        "Medium" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bleeding = option }
                             }
                         }
                     }
@@ -1353,7 +1380,15 @@ fun EditCycleDialog(
                             colorOptions.forEach { option ->
                                 val isSelected = bloodColor.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Bright Red" -> pastelGreen; "Dark Red" -> Color(0xFF4E1A1A); "Brown" -> pastelOrange; else -> accentColor }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bloodColor = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Dark Red" -> Color.White
+                                        "Brown" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bloodColor = option }
                             }
                         }
                     }
@@ -1467,7 +1502,7 @@ fun EntryStylePill(
     inactiveText: Color, surface: Color, onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (isSelected) activeBg else surface).clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 8.dp),
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (isSelected) activeBg else surface).selectable(selected = isSelected, onClick = onClick, role = Role.RadioButton).padding(horizontal = 18.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(

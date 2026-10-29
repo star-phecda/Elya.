@@ -294,7 +294,15 @@ fun AddCycleDialog(
                             bleedingOptions.forEach { option ->
                                 val isSelected = bleeding.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Heavy" -> pastelMaroon; "Medium" -> pastelOrange; else -> pastelGreen }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bleeding = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Heavy" -> scheme.onErrorContainer
+                                        "Medium" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bleeding = option }
                             }
                         }
                     }
@@ -305,7 +313,15 @@ fun AddCycleDialog(
                             colorOptions.forEach { option ->
                                 val isSelected = bloodColor.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Bright Red" -> pastelGreen; "Dark Red" -> Color(0xFF4E1A1A); "Brown" -> pastelOrange; else -> accentColor }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bloodColor = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Dark Red" -> Color.White
+                                        "Brown" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bloodColor = option }
                             }
                         }
                     }
