@@ -318,7 +318,7 @@ private fun ProfileRow(
     onSwitch: (Int) -> Unit,
     onEdit: (PeriodViewModel.Profile) -> Unit
 ) {
-    val sheetBg = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
+    val sheetBg = MaterialTheme.colorScheme.surface
     val targetBg = if (isSelected) lerp(sheetBg, highlightColor, 0.15f) else rowBg
     val animatedBg by animateColorAsState(targetValue = targetBg, animationSpec = tween(300), label = "rowBgAnim")
 
@@ -395,10 +395,10 @@ fun ProfileEditorDialog(
         }
     }
 
-    val containerColor = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
-    val textPrimary = if (isDark) Color(0xFFFFF2F7) else Color(0xFF321B28)
-    val textSub = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
-    val accentColor = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
+    val containerColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -552,9 +552,9 @@ fun ProfileBottomSheetContent(
     onSettingsClick: () -> Unit,
     listState: LazyListState = rememberLazyListState()
 ) {
-    val textPrimary = if (isDark) Color(0xFFFFF2F7) else Color(0xFF321B28)
-    val textSub = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
-    val accentColor = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
     val rowBg = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     Column(
@@ -650,10 +650,10 @@ fun LegacyImportDialog(
     onDismiss: () -> Unit
 ) {
     val isDark = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
-    val textPrimary = if (isDark) Color(0xFFFFF2F7) else Color(0xFF321B28)
-    val textSub = if (isDark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
-    val accentColor = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
+    val containerColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
     val rowBg = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     val configuration = LocalConfiguration.current

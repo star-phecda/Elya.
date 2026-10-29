@@ -870,9 +870,9 @@ private fun CalendarCard(
     val isDark = LocalAppIsDark.current
     val scope  = rememberCoroutineScope()
 
-    val backgroundBrush    = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
-    val onCardContent      = if (isDark) Color.White else Color.Black
-    val onCardContentMuted = onCardContent.copy(alpha = 0.70f)
+    val backgroundBrush    = MaterialTheme.colorScheme.surface
+    val onCardContent      = MaterialTheme.colorScheme.onSurface
+    val onCardContentMuted = MaterialTheme.colorScheme.onSurfaceVariant
 
     val daysOfWeek = remember(firstDayOfWeek) { daysOfWeek(firstDayOfWeek = firstDayOfWeek) }
 
