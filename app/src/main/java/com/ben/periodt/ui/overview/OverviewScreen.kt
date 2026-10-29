@@ -114,47 +114,6 @@ internal data class InsightsSeries(
     val bloodColorDistribution: List<Pair<String, Float>>
 )
 
-/**
- * Downsample chart geometry before it reaches the Canvas. The persisted history
- * stays intact; only the display projection is reduced. Uniform sampling keeps
- * the first and last records and their date labels, while capping work for long
- * histories so a chart never lays out thousands of point intervals.
- */
-internal fun downsampleInsightsSeries(
-    series: InsightsChartSeries,
-    maxPoints: Int = 120
-): InsightsChartSeries {
-    require(maxPoints >= 2) { "maxPoints must be at least 2 to preserve chart endpoints" }
-    if (series.points.size <= maxPoints) return series
-    require(series.points.size == series.dates.size) {
-        "Every Insights point must have a matching date label"
-    }
-
-    val sourceCount = series.points.size
-    val points = ArrayList<Pair<Float, Float>>(maxPoints)
-    val dates = ArrayList<String>(maxPoints)
-    for (bucket in 0 until maxPoints) {
-        val start = bucket * sourceCount / maxPoints
-        val end = (bucket + 1) * sourceCount / maxPoints
-        var yTotal = 0f
-        for (index in start until end) {
-            yTotal += series.points[index].second
-        }
-        val bucketSize = (end - start).toFloat()
-        val y = when (bucket) {
-            0 -> series.points.first().second
-            maxPoints - 1 -> series.points.last().second
-            else -> yTotal / bucketSize
-        }
-
-        // The chart positions x using the number of plotted points, so use dense bucket indices.
-        points.add(bucket.toFloat() to y)
-        val labelIndex = if (bucket == 0) 0 else (end - 1).coerceAtMost(series.dates.lastIndex)
-        dates.add(series.dates[labelIndex])
-    }
-    return InsightsChartSeries(points = points, dates = dates)
-}
-
 /** Derive all Insights charts in one pass; retain existing day-log and duration fallback semantics. */
 internal fun buildInsightsSeries(
     cycles: List<PeriodViewModel.Cycle>,
@@ -215,10 +174,8 @@ internal fun downsampleInsightsSeries(
     for (bucket in 0 until maxPoints) {
         val start = bucket * count / maxPoints
         val end = ((bucket + 1) * count / maxPoints).coerceAtLeast(start + 1)
-        var xTotal = 0f
         var yTotal = 0f
         for (index in start until end) {
-            xTotal += series.points[index].first
             yTotal += series.points[index].second
         }
         val bucketSize = (end - start).toFloat()
@@ -274,12 +231,6 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
     val dailyLogs by viewModel.dailyLogs.collectAsState()
     val insightsSeries = remember(cycles, dailyLogs) {
         buildInsightsSeries(cycles, dailyLogs)
-    }
-    val bleedingChartSeries = remember(insightsSeries.bleeding) {
-        downsampleInsightsSeries(insightsSeries.bleeding)
-    }
-    val painChartSeries = remember(insightsSeries.pain) {
-        downsampleInsightsSeries(insightsSeries.pain)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
@@ -369,8 +320,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Bleeding intensity", surface, textCol) {
-                val bleedingPoints = bleedingChartSeries.points
-                val bleedingDates = bleedingChartSeries.dates
+                val bleedingPoints = insightsSeries.bleeding.points
+                val bleedingDates = insightsSeries.bleeding.dates
                 ScrollableLineChart(
                     points = bleedingPoints, dates = bleedingDates, lineColor = bleedingChartColor,
                     yLabels = listOf("S", "L", "M", "H"), yMax = 3f, showArea = true,
@@ -384,8 +335,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Pain level", surface, textCol) {
-                val painPoints = painChartSeries.points
-                val painDates = painChartSeries.dates
+                val painPoints = insightsSeries.pain.points
+                val painDates = insightsSeries.pain.dates
                 ScrollableLineChart(
                     points = painPoints, dates = painDates, lineColor = painChartColor,
                     yLabels = (0..10 step 2).map { "$it" }, yMax = 10f, showArea = true,

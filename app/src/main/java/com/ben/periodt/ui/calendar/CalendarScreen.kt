@@ -229,10 +229,9 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
     val isDark = LocalAppIsDark.current
     val isTransitioning by viewModel.isTransitioning.collectAsState()
     val isOnPill by viewModel.isOnPill.collectAsState()
-    val pillStartDate by viewModel.pillPackStartDate.collectAsState()
+    val pillStartDate by viewModel.pillStartDate.collectAsState()
     val pillStopDate by viewModel.pillStopDate.collectAsState()
     val pillPacks by viewModel.pillPacks.collectAsState()
-    val pillPackStartDate by viewModel.pillPackStartDate.collectAsState()
     val pillPackCount by viewModel.pillPackCount.collectAsState()
     val dailyLogs by viewModel.dailyLogs.collectAsState()
     var dayLogTarget by remember { mutableStateOf<Pair<PeriodViewModel.Cycle, LocalDate>?>(null) }
@@ -382,7 +381,7 @@ fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
                     isTransitioning   = isTransitioning,
                     isOnPill          = isOnPill,
                     pillStopDate      = pillStopDate,
-                    pillPackStartDate = pillPackStartDate,
+                    pillStartDate = pillStartDate,
                     pillPackCount     = pillPackCount
                 )
             }
@@ -1679,14 +1678,14 @@ private val pillFlowMessages    = listOf("Stay consistent with your pack! 💊",
 fun PredictionBanner(
     prediction: Prediction?, cycles: List<PeriodViewModel.Cycle>,
     isTransitioning: Boolean, isOnPill: Boolean, pillStopDate: LocalDate?,
-    pillPackStartDate: LocalDate? = null, pillPackCount: Int = 21
+    pillStartDate: LocalDate? = null, pillPackCount: Int = 21
 ) {
     val today = LocalDate.now()
     val now   = LocalDateTime.now()
     val isDark = LocalAppIsDark.current
 
-    val packEndDate = remember(pillPackStartDate, pillPackCount) {
-        pillPackStartDate?.plusDays((pillPackCount - 1).toLong())
+    val packEndDate = remember(pillStartDate, pillPackCount) {
+        pillStartDate?.plusDays((pillPackCount - 1).toLong())
     }
     val endFormatter = remember { DateTimeFormatter.ofPattern("MMM dd") }
     val postPillCycles = remember(cycles, pillStopDate) {
@@ -1716,7 +1715,7 @@ fun PredictionBanner(
 
     if (activeCycle != null) {
         val dayOfPeriod  = ChronoUnit.DAYS.between(activeCycle.startDate, today).toInt() + 1
-        val pillDayIndex = if (pillPackStartDate != null) (today.toEpochDay() - pillPackStartDate.toEpochDay()).toInt().coerceAtLeast(0) else today.toEpochDay().toInt()
+        val pillDayIndex = if (pillStartDate != null) (today.toEpochDay() - pillStartDate.toEpochDay()).toInt().coerceAtLeast(0) else today.toEpochDay().toInt()
         val label        = if (isOnPill) "Withdrawal Bleed" else "Period"
         icon             = Icons.Rounded.Favorite
         accentColor      = if (isOnPill) Color(0xFFA77C91) else Color(0xFFEF5350)
