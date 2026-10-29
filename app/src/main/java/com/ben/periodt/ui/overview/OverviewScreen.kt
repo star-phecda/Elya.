@@ -149,11 +149,48 @@ internal fun buildInsightsSeries(
         bloodColorCounts.entries.sortedByDescending { it.value }
             .map { it.key to (it.value.toFloat() / totalColorDays) }
     }
+    val bleedingSeries = downsampleInsightsSeries(InsightsChartSeries(bleedingPoints.toList(), dates.toList()))
+    val painSeries = downsampleInsightsSeries(InsightsChartSeries(painPoints.toList(), dates.toList()))
     return InsightsSeries(
-        bleeding = InsightsChartSeries(bleedingPoints.toList(), dates.toList()),
-        pain = InsightsChartSeries(painPoints.toList(), dates.toList()),
+        bleeding = bleedingSeries,
+        pain = painSeries,
         bloodColorDistribution = distribution
     )
+}
+
+/**
+ * Caps Canvas work for very long histories while preserving the first and last points.
+ * Bucket averages keep long-term trends visible; blood-colour distribution still uses every logged day.
+ */
+internal fun downsampleInsightsSeries(
+    series: InsightsChartSeries,
+    maxPoints: Int = 120
+): InsightsChartSeries {
+    require(maxPoints >= 2) { "maxPoints must be at least 2" }
+    if (series.points.size <= maxPoints) return series
+    val points = ArrayList<Pair<Float, Float>>(maxPoints)
+    val dates = ArrayList<String>(maxPoints)
+    val count = series.points.size
+    for (bucket in 0 until maxPoints) {
+        val start = bucket * count / maxPoints
+        val end = ((bucket + 1) * count / maxPoints).coerceAtLeast(start + 1)
+        var xTotal = 0f
+        var yTotal = 0f
+        for (index in start until end) {
+            xTotal += series.points[index].first
+            yTotal += series.points[index].second
+        }
+        val bucketSize = (end - start).toFloat()
+        val x = when (bucket) {
+            0 -> series.points.first().first
+            maxPoints - 1 -> series.points.last().first
+            else -> xTotal / bucketSize
+        }
+        points.add(x to (yTotal / bucketSize))
+        val labelIndex = if (bucket == 0) 0 else (end - 1).coerceAtMost(series.dates.lastIndex)
+        dates.add(series.dates.getOrElse(labelIndex) { "" })
+    }
+    return InsightsChartSeries(points, dates)
 }
 
 @Composable
@@ -235,8 +272,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
 
             CombinedStatsCard(
                 totalCycles = "${cycles.size}",
-                avgPeriod   = avgPeriodLength?.let { "$it d" } ?: "—",
-                avgCycle    = avgCycleLength?.let  { "$it d" } ?: "—"
+                avgPeriod   = avgPeriodLength?.let { "$it d" } ?: "0",
+                avgCycle    = avgCycleLength?.let  { "$it d" } ?: "0"
             )
 
             Spacer(Modifier.height(14.dp))
@@ -688,6 +725,12 @@ private fun LineChartContent(
         val areaPath = Path()
         var prevXPos = 0f; var prevYPos = 0f
 
+        val datePaint = Paint().apply {
+            color = labelColor.toArgb()
+            textSize = with(density) { SIZE_XXS.toPx() }
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        }
         points.forEachIndexed { index, (x, y) ->
             val xPos = chartLeft + (x / denom) * chartWidth
             val yPos = chartBottom - (y / yMax) * chartHeight
@@ -700,15 +743,8 @@ private fun LineChartContent(
                 if (showArea) areaPath.cubicTo(cpX, prevYPos, cpX, yPos, xPos, yPos)
             }
             prevXPos = xPos; prevYPos = yPos
-
             if (index < dates.size) {
-                val paint = Paint().apply {
-                    color     = labelColor.toArgb()
-                    textSize  = with(density) { SIZE_XXS.toPx() }
-                    textAlign = Paint.Align.CENTER
-                    typeface  = Typeface.create("sans-serif", Typeface.BOLD)
-                }
-                drawContext.canvas.nativeCanvas.drawText(dates[index], xPos, size.height - 10.dp.toPx(), paint)
+                drawContext.canvas.nativeCanvas.drawText(dates[index], xPos, size.height - 10.dp.toPx(), datePaint)
             }
         }
 
