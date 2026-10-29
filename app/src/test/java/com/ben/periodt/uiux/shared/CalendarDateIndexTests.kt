@@ -5,8 +5,11 @@ import com.ben.periodt.ui.shared.Prediction
 import com.ben.periodt.ui.calendar.buildCalendarDayIndex
 import com.ben.periodt.viewmodel.PeriodViewModel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.YearMonth
 
 class CalendarDateIndexTests {
     private val today = LocalDate.of(2026, 10, 29)
@@ -117,6 +120,26 @@ class CalendarDateIndexTests {
 
         assertEquals(3, activePrediction.phases[today])
         assertEquals(0, pausedPrediction.phases[today])
+    }
+
+    @Test
+    fun indexIncludesFullCalendarGridSpilloverAtBothEdges() {
+        val index = buildCalendarDayIndex(
+            today = today,
+            cycles = emptyList(),
+            prediction = null,
+            transitioning = false,
+            onPill = false,
+            packs = emptyList()
+        )
+        val currentMonth = YearMonth.from(today)
+        val firstSupportedMonthDay = currentMonth.minusMonths(12).atDay(1)
+        val lastSupportedMonthDay = currentMonth.plusMonths(12).atEndOfMonth()
+
+        assertTrue(index.phases.containsKey(firstSupportedMonthDay.minusDays(8)))
+        assertTrue(index.phases.containsKey(lastSupportedMonthDay.plusDays(8)))
+        assertFalse(index.phases.containsKey(firstSupportedMonthDay.minusDays(9)))
+        assertFalse(index.phases.containsKey(lastSupportedMonthDay.plusDays(9)))
     }
 
     @Test

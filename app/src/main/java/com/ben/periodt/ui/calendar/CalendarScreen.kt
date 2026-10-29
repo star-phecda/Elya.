@@ -188,8 +188,9 @@ internal fun buildCalendarDayIndex(
     val cyclesByDay = HashMap<LocalDate, PeriodViewModel.Cycle>()
     val packsByDay = HashMap<LocalDate, PeriodViewModel.PillPack>()
     val currentMonth = YearMonth.from(today)
-    var day = currentMonth.minusMonths(12).atDay(1).minusDays(1)
-    val lastDay = currentMonth.plusMonths(12).atEndOfMonth().plusDays(1)
+    // Include the neighboring calendar weeks and one more day for continuous-range edge checks.
+    var day = currentMonth.minusMonths(12).atDay(1).minusDays(8)
+    val lastDay = currentMonth.plusMonths(12).atEndOfMonth().plusDays(8)
     while (!day.isAfter(lastDay)) {
         val cycle = cycles.firstOrNull { c ->
             val end = c.endDate ?: c.startDate.plusDays(6)
