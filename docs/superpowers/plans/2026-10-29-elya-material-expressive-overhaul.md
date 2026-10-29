@@ -56,7 +56,7 @@
 
 **Why:** The previous day cell searched cycles and packs separately for the current, previous and next date. History rows also rescanned all daily logs.
 
-**Verification:** Five date-index tests cover overlap priority, pill priority, the exclusive prediction end, paused fertile-window states and adjacent-day range highlights.
+**Verification:** Six date-index tests cover overlap priority, pill priority, the exclusive prediction end, paused fertile-window states, adjacent-day range highlights, and both calendar spillover bounds.
 
 **Expected result:** Calendar dates use constant-time map lookups when composing cells; saved cycle and pill rules remain unchanged.
 
@@ -64,6 +64,7 @@
 - [x] Add and memoize a bounded day index with correct navigation bounds.
 - [x] Cache history log counts and remove nested StateFlow collection.
 - [x] Add date-boundary and phase-precedence regression coverage.
+- [x] Include the full neighboring calendar grid plus adjacent-day phase checks at both scroll-range edges.
 
 ## Task DYX-003 — Insights hierarchy and chart performance
 
@@ -106,9 +107,9 @@
 
 **Goal:** Make the whole app feel like the same Elya product instead of a branded home surrounded by upstream styles.
 
-**Files:** `ui/onboarding/OnboardingWidgets.kt`, `ui/overview/SettingsScreen.kt`, `ui/profiles/ProfileComponents.kt`, `ui/overview/FeedbackComponents.kt`, `ui/calendar/CalendarScreen.kt`, theme components.
+**Files:** `ui/onboarding/OnboardingWidgets.kt`, `ui/overview/SettingsScreen.kt`, `ui/profiles/ProfileComponents.kt`, `ui/overview/FeedbackComponents.kt`, `ui/calendar/CalendarScreen.kt`, `ui/calendar/AddCycleDialog.kt`, `ui/pill/PillTrackingSetupDialog.kt`, `reminder/RemindersDialog.kt`, theme components.
 
-**Action:** Apply semantic Material 3 colors to onboarding actions, settings, profile/feedback dialogs and calendar surfaces. Keep the icon pattern but stop the infinite full-screen canvas redraw. Retain privacy, backups, reminders, appearance selection, import/export and profile operations.
+**Action:** Apply semantic Material 3 colors to onboarding actions, Settings, profile/feedback dialogs, calendar/day-log sheets, cycle-log sheets, pill setup and reminders. Pair selected options with contrasting on-container text and radio-option semantics. Keep the icon pattern but stop the infinite full-screen canvas redraw. Retain privacy, backups, reminders, appearance selection, import/export and profile operations.
 
 **Why:** Continuous decorative redraws cost work with no interaction value, and hardcoded upstream palettes made dialogs and settings visually inconsistent.
 
@@ -117,8 +118,9 @@
 **Expected result:** Elya's ivory/blush/rose/plum and dark palettes are consistent across primary screens and sheets without changing business behavior.
 
 - [x] Remove infinite decorative canvas animation while retaining the visual pattern.
-- [x] Use MaterialTheme tokens for Settings, onboarding actions, profile/feedback surfaces and the calendar card.
-- [x] Preserve the existing settings and profile actions.
+- [x] Use MaterialTheme tokens across Settings, onboarding, profile/feedback, calendar/day-log, cycle-log, pill-setup and reminder sheets.
+- [x] Pair selected status chips with suitable foreground colors and expose selected radio-option semantics.
+- [x] Preserve the existing settings, backup, reminder and profile actions.
 
 ## Task DYX-006 — Accessibility, final verification and artifact
 
@@ -128,7 +130,7 @@
 
 **Action:** Mark the selected tab semantically, check the full PR diff, run current CI, retrieve the uploaded APK and record its size/checksum. Review current Compose APIs with Context7, and apply Dyslex.ai accessibility/task-sequencing guidance without weakening Superpowers test/verification gates.
 
-**Verification:** Current source-code commit `10df8da023a1ce1eba706aa28138b6e3df8e991b` workflow `40884781337` passed unit tests, `assembleDebug` and APK upload. Artifact `12902073012` was retrieved as a ZIP and contained `app-debug.apk` (53,006,044 bytes; SHA-256 `134300d3956ae1ae8f53084b60d89153d48db40207db144ea376c78988458d0d`). Source/artifact integrity checks passed. A device profiler / physical handset is not available here, so no numeric FPS or real-device responsiveness claim is made.
+**Verification:** Latest application-code commit `3b9220f299a6a97c3758c199f16a60c6347dbe71` passed workflow `40886877135`: unit tests, `assembleDebug`, and APK upload all succeeded. Artifact `12901739051` was retrieved and inspected; its `app-debug.apk` is 53,006,044 bytes with SHA-256 `f589e31f76be471b911dc88b7f7c8a4034fb932fe23eb8c162006361841ee9d9`. The artifact ZIP was 41,459,516 bytes (SHA-256 `3bc3cf88196e6e23e86d86a2d045c8cb01a4048d5dd480cb63649a1018dcff4e`). `file` identifies the APK as an Android package and `unzip -t` reports no archive errors. A device profiler / physical handset is not available here, so no numeric FPS or real-device responsiveness claim is made.
 
 **Expected result:** Reviewable PR and a non-empty debug APK whose build, tests and artifact existance have been verified.
 
@@ -143,7 +145,7 @@
 
 - **Ruling:** Keep work on `feat/elya-brand-system`, not `main`, so the redesign remains reviewable and rollback-safe.
 - **Ruling:** Remove Haze from the main screen because the old Haze state had no `hazeChild` surfaces; it added a rendering layer without contributing a visible blur.
-- **Measured by source inspection:** Calendar repeated per-cell cycle/pill scans were replaced with a date index; history daily-log counts are precomputed; Insights charts share one derived data pass; Pill history is lazy; onboarding's perpetual canvas transition is static.
-- **Verification:** CI success for application-code commit `10df8da023a1ce1eba706aa28138b6e3df8e991b` is run `40884781337`. Artifact `12902073012` was retrieved and checked.
+- **Measured by source inspection:** Calendar repeated per-cell cycle/pill scans were replaced with an indexed date lookup that includes the neighboring grid weeks; history daily-log counts are precomputed; Insights charts share one derived data pass; Pill history is lazy; onboarding's perpetual canvas transition is static; setup/logging/reminder sheets share theme tokens.
+- **Verification:** CI success for application-code commit `3b9220f299a6a97c3758c199f16a60c6347dbe71` is run `40886877135`. Artifact `12901739051` was retrieved, extracted and checked.
 - **Known limitation:** No physical-device/Emulator frame trace or pixel-level screenshot run was available. The lag-related source hotspots were addressed, but a measured frames-per-second gain cannot be claimed.
-- **Next action:** Run final CI on the documentation-updated branch head, confirm artifact upload, update the PR summary, then deliver the verified APK and links.
+- **Next action:** Update the PR title/body to reflect the full implementation; keep the PR open as a draft for review. No further application source changes are planned unless current-head verification exposes a failure.
