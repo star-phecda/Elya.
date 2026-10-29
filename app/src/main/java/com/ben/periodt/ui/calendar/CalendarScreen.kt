@@ -219,7 +219,7 @@ private fun buildCalendarDayIndex(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {})
+fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {}) {
     val cycles by viewModel.cycles.collectAsState()
     val prediction by viewModel.prediction.collectAsState()
     val isDark = LocalAppIsDark.current
