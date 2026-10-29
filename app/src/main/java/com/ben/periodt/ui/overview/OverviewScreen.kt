@@ -149,11 +149,9 @@ internal fun buildInsightsSeries(
         bloodColorCounts.entries.sortedByDescending { it.value }
             .map { it.key to (it.value.toFloat() / totalColorDays) }
     }
-    val bleedingSeries = downsampleInsightsSeries(InsightsChartSeries(bleedingPoints.toList(), dates.toList()))
-    val painSeries = downsampleInsightsSeries(InsightsChartSeries(painPoints.toList(), dates.toList()))
     return InsightsSeries(
-        bleeding = bleedingSeries,
-        pain = painSeries,
+        bleeding = InsightsChartSeries(bleedingPoints.toList(), dates.toList()),
+        pain = InsightsChartSeries(painPoints.toList(), dates.toList()),
         bloodColorDistribution = distribution
     )
 }
@@ -174,8 +172,10 @@ internal fun downsampleInsightsSeries(
     for (bucket in 0 until maxPoints) {
         val start = bucket * count / maxPoints
         val end = ((bucket + 1) * count / maxPoints).coerceAtLeast(start + 1)
+        var xTotal = 0f
         var yTotal = 0f
         for (index in start until end) {
+            xTotal += series.points[index].first
             yTotal += series.points[index].second
         }
         val bucketSize = (end - start).toFloat()
@@ -231,6 +231,12 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
     val dailyLogs by viewModel.dailyLogs.collectAsState()
     val insightsSeries = remember(cycles, dailyLogs) {
         buildInsightsSeries(cycles, dailyLogs)
+    }
+    val bleedingChartSeries = remember(insightsSeries.bleeding) {
+        downsampleInsightsSeries(insightsSeries.bleeding)
+    }
+    val painChartSeries = remember(insightsSeries.pain) {
+        downsampleInsightsSeries(insightsSeries.pain)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
@@ -320,8 +326,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Bleeding intensity", surface, textCol) {
-                val bleedingPoints = insightsSeries.bleeding.points
-                val bleedingDates = insightsSeries.bleeding.dates
+                val bleedingPoints = bleedingChartSeries.points
+                val bleedingDates = bleedingChartSeries.dates
                 ScrollableLineChart(
                     points = bleedingPoints, dates = bleedingDates, lineColor = bleedingChartColor,
                     yLabels = listOf("S", "L", "M", "H"), yMax = 3f, showArea = true,
@@ -335,8 +341,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Pain level", surface, textCol) {
-                val painPoints = insightsSeries.pain.points
-                val painDates = insightsSeries.pain.dates
+                val painPoints = painChartSeries.points
+                val painDates = painChartSeries.dates
                 ScrollableLineChart(
                     points = painPoints, dates = painDates, lineColor = painChartColor,
                     yLabels = (0..10 step 2).map { "$it" }, yMax = 10f, showArea = true,
