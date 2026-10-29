@@ -95,6 +95,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.ben.periodt.R
 import kotlin.math.round
+import kotlin.math.roundToInt
 
 private val SIZE_XXS = 11.sp
 private val SIZE_XS  = 12.sp
@@ -113,6 +114,35 @@ internal data class InsightsSeries(
     val pain: InsightsChartSeries,
     val bloodColorDistribution: List<Pair<String, Float>>
 )
+
+/**
+ * Downsample chart geometry before it reaches the Canvas. The persisted history
+ * stays intact; only the display projection is reduced. Uniform sampling keeps
+ * the first and last records and their date labels, while capping work for long
+ * histories so a chart never lays out thousands of point intervals.
+ */
+internal fun downsampleInsightsSeries(
+    series: InsightsChartSeries,
+    maxPoints: Int = 120
+): InsightsChartSeries {
+    require(maxPoints >= 2) { "maxPoints must be at least 2 to preserve chart endpoints" }
+    if (series.points.size <= maxPoints) return series
+    require(series.points.size == series.dates.size) {
+        "Every Insights point must have a matching date label"
+    }
+
+    val lastSourceIndex = series.points.lastIndex
+    val points = ArrayList<Pair<Float, Float>>(maxPoints)
+    val dates = ArrayList<String>(maxPoints)
+    for (sample in 0 until maxPoints) {
+        val sourceIndex = (sample.toDouble() * lastSourceIndex / (maxPoints - 1))
+            .roundToInt()
+            .coerceIn(0, lastSourceIndex)
+        points += series.points[sourceIndex]
+        dates += series.dates[sourceIndex]
+    }
+    return InsightsChartSeries(points = points, dates = dates)
+}
 
 /** Derive all Insights charts in one pass; retain existing day-log and duration fallback semantics. */
 internal fun buildInsightsSeries(
@@ -234,6 +264,12 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
     val insightsSeries = remember(cycles, dailyLogs) {
         buildInsightsSeries(cycles, dailyLogs)
     }
+    val bleedingChartSeries = remember(insightsSeries.bleeding) {
+        downsampleInsightsSeries(insightsSeries.bleeding)
+    }
+    val painChartSeries = remember(insightsSeries.pain) {
+        downsampleInsightsSeries(insightsSeries.pain)
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
         Column(
@@ -322,8 +358,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Bleeding intensity", surface, textCol) {
-                val bleedingPoints = insightsSeries.bleeding.points
-                val bleedingDates = insightsSeries.bleeding.dates
+                val bleedingPoints = bleedingChartSeries.points
+                val bleedingDates = bleedingChartSeries.dates
                 ScrollableLineChart(
                     points = bleedingPoints, dates = bleedingDates, lineColor = bleedingChartColor,
                     yLabels = listOf("S", "L", "M", "H"), yMax = 3f, showArea = true,
@@ -337,8 +373,8 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Pain level", surface, textCol) {
-                val painPoints = insightsSeries.pain.points
-                val painDates = insightsSeries.pain.dates
+                val painPoints = painChartSeries.points
+                val painDates = painChartSeries.dates
                 ScrollableLineChart(
                     points = painPoints, dates = painDates, lineColor = painChartColor,
                     yLabels = (0..10 step 2).map { "$it" }, yMax = 10f, showArea = true,
