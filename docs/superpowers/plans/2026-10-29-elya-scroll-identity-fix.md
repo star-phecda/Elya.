@@ -16,7 +16,7 @@
 - **Status:** Complete subject to the on-device smoke test below.
 
 ## Task DYX-003 — verify repository identity and build
-- **Action completed:** Audited the current repository's text source paths for the former Gmail and dedication strings. The old literal `developer.ben10@gmail.com` is no longer in the current source/docs; the profile display and `mailto:` use the same maintainer constant. The Settings footer and its test use the exact requested text.
+- **Action completed:** Audited the current repository's text source paths for the former Gmail and dedication strings. The former developer email is no longer in current app source or user-facing documentation; the profile display and `mailto:` use the same maintainer constant. The Settings footer and its test use the exact requested text.
 - **CI:** [GitHub Actions run 40895609119](https://github.com/star-phecda/Elya./actions/runs/40895609119) passed `testDebugUnitTest`, `assembleDebug`, and APK artifact upload on code SHA `40422c34739a3633a57d4558d15e4cf3d710fe28`.
 - **Artifact:** `elya-debug-apk`, ID `12905734792`; ZIP size 41,461,707 bytes, SHA-256 `f2dd3d3e8d2c3c2dde109e8e98b04ca702a08487b9aa73a41cfc838186cb0c8e`. Extracted APK size 53,006,044 bytes, SHA-256 `b64db9d39ef51cc07ef3f7459ac21796af800cacebabbd96c8528c63c39eef9a`. `file` identifies the APK as an Android package; `unzip -t` reports no archive errors. Embedded DEX string check finds `dawnphecda@gmail.com` and the dedication text; no old email appears in the checked current source files.
 - **Status:** Complete.
