@@ -15,7 +15,9 @@ class InsightsSeriesPerformanceTest {
         assertEquals(120, result.points.size)
         assertEquals(120, result.dates.size)
         assertEquals(points.first().first, result.points.first().first, 0.001f)
-        assertEquals(points.last().first, result.points.last().first, 0.001f)
+        assertEquals(119f, result.points.last().first, 0.001f)
+        assertEquals(points.first().second, result.points.first().second, 0.001f)
+        assertEquals(points.last().second, result.points.last().second, 0.001f)
         assertEquals(dates.first(), result.dates.first())
         assertEquals(dates.last(), result.dates.last())
     }

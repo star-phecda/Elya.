@@ -181,12 +181,13 @@ internal fun downsampleInsightsSeries(
             yTotal += series.points[index].second
         }
         val bucketSize = (end - start).toFloat()
-        val x = when (bucket) {
-            0 -> series.points.first().first
-            maxPoints - 1 -> series.points.last().first
-            else -> xTotal / bucketSize
+        // Canvas maps x by the plotted point count, so the downsampled x values must be dense indices.
+        val y = when (bucket) {
+            0 -> series.points.first().second
+            maxPoints - 1 -> series.points.last().second
+            else -> yTotal / bucketSize
         }
-        points.add(x to (yTotal / bucketSize))
+        points.add(bucket.toFloat() to y)
         val labelIndex = if (bucket == 0) 0 else (end - 1).coerceAtMost(series.dates.lastIndex)
         dates.add(series.dates.getOrElse(labelIndex) { "" })
     }
