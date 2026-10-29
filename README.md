@@ -1,10 +1,12 @@
 <p align="center">
-<img width="200" height="200" alt="logo 1" src="fastlane/metadata/android/en-US/images/icon.png" />
+<img width="200" height="200" alt="Elya floral logo" src="app/src/main/res/drawable/elya_logo.webp" />
 </p>
-<h1 align="center">Periodt: Track & Predict Cycles</h1>
+<h1 align="center">Elya: Track & Predict Cycles</h1>
 <p align="center">
-Periodt is a privacy‑first Android app that keeps all cycle data on the device and uses on‑device logic to predict upcoming periods, fertile windows, and ovulation estimates — with full pill tracking and post-pill recovery awareness.
+Elya is a privacy‑first Android app that keeps all cycle data on the device and uses on‑device logic to predict upcoming periods, fertile windows, and ovulation estimates — with full pill tracking and post-pill recovery awareness.
 </p>
+
+<p align="center">Elya is a community fork of <a href="https://github.com/benny10ben/Periodt">Periodt</a> by Benny and remains licensed under the GNU GPL-3.0.</p>
 <br />
 
 <p align="center">
@@ -57,8 +59,12 @@ Issues and PRs are welcome. If you're planning something big, open an issue firs
 
 GNU General Public License (GPL) — see [LICENSE](./LICENSE).
 
-## Developer
+## Original developer
 
 Built by [Benny](https://github.com/benny10ben)
 
-[![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://www.instagram.com/ben.bytee?igsh=MzRtZXB4cjcwYWEx) [![X](https://img.shields.io/badge/X-black.svg?logo=X&logoColor=white)](https://x.com/benbytee) [![email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:developer.ben10@gmail.com)
+[![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://www.instagram.com/ben.bytee?igsh=MzRtZXB4cjcwYWEx) [![X](https://img.shields.io/badge/X-black.svg?logo=X&logoColor=white)](https://x.com/benbytee)
+
+## Elya maintainer
+
+[![Email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:dawnphecda@gmail.com)

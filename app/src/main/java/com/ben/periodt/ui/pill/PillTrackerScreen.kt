@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,160 +47,210 @@ private val SIZE_LG  = 15.sp
 private val SIZE_XL  = 20.sp
 
 @Composable
-fun PillTrackerScreen(viewModel: PeriodViewModel) {
-    val isOnPill      by viewModel.isOnPill.collectAsState()
+fun PillTrackerScreen(
+    viewModel: PeriodViewModel,
+    onSetupClick: () -> Unit = {}
+) {
+    val isOnPill by viewModel.isOnPill.collectAsState()
     val postPillState by viewModel.postPillState.collectAsState()
-    val startDate     by viewModel.pillPackStartDate.collectAsState()
-    val pillCount     by viewModel.pillPackCount.collectAsState()
-    val pillHistory   by viewModel.pillPacks.collectAsState()
+    val prediction by viewModel.prediction.collectAsState()
+    val startDate by viewModel.pillPackStartDate.collectAsState()
+    val pillCount by viewModel.pillPackCount.collectAsState()
+    val pillHistory by viewModel.pillPacks.collectAsState()
 
     val isDark = LocalAppIsDark.current
-
-    val textPrimary    = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val cardBg         = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
-    val pillBackground = if (isDark) Color(0xFFE8EBED).copy(alpha = 0.1f) else Color(0xFFE8EBED).copy(alpha = 0.4f)
-
-    val starAccent  = if (isDark) Color(0xFF8089D2) else Color(0xFF2C3F70)
-    val themeAccent = Color(0xFFa68e74)
-
+    val scheme = MaterialTheme.colorScheme
+    val textPrimary = scheme.onSurface
+    val textSub = scheme.onSurfaceVariant
+    val cardBg = scheme.surface
+    val pillBackground = scheme.surfaceVariant
+    val starAccent = if (isDark) Color(0xFFE7A4BC) else Color(0xFF613248)
+    val themeAccent = scheme.primary
     val activeAccent = when (postPillState) {
         PostPillState.DISCOVERY, PostPillState.LEARNING -> starAccent
         else -> themeAccent
     }
+    val sortedHistory = remember(pillHistory) { pillHistory.sortedByDescending { it.startDate } }
+    var showStopConfirmation by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.refreshState() }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 120.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 120.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(32.dp))
-
-        AnimatedContent(targetState = Pair(isOnPill, postPillState), label = "HeaderState") { (active, pillState) ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier         = Modifier.size(80.dp).clip(CircleShape).background(Color.Transparent),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = when {
-                            active                               -> Icons.Rounded.Medication
-                            pillState == PostPillState.DISCOVERY -> Icons.Rounded.AutoAwesome
-                            pillState == PostPillState.LEARNING  -> Icons.Rounded.AutoAwesome
-                            else                                 -> Icons.Rounded.Medication
-                        },
-                        contentDescription = null,
-                        modifier           = Modifier.size(40.dp),
-                        tint               = activeAccent
-                    )
-                }
-
-                Spacer(Modifier.height(24.dp))
-
-                Text(
-                    text = when {
-                        active                               -> "Pill Tracking Active"
-                        pillState == PostPillState.DISCOVERY -> "Discovery Mode"
-                        pillState == PostPillState.LEARNING  -> "Learning Mode"
-                        else                                 -> "Pill Mode"
-                    },
-                    fontSize   = 28.sp,
-                    fontFamily = BricolageGrotesque,
-                    fontWeight = FontWeight.Bold,
-                    color      = textPrimary
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                Text(
-                    text = when {
-                        active -> "Your active pill pack is being tracked.\nWithdrawal bleed date is predicted automatically."
-                        pillState == PostPillState.DISCOVERY -> "Your body is recalibrating after the pill.\nPredictions are paused until your first cycle is logged."
-                        pillState == PostPillState.LEARNING  -> "Predictions are live but still refining.\nKeep logging to improve accuracy."
-                        else -> "Tap the button below to set up your pack."
-                    },
-                    fontSize   = SIZE_LG,
-                    fontFamily = BricolageGrotesque,
-                    color      = textSub,
-                    textAlign  = TextAlign.Center,
-                    lineHeight = 24.sp,
-                    modifier   = Modifier.padding(horizontal = 16.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(40.dp))
-
-        LifeAfterPillCard(
-            cardBg        = cardBg,
-            textPrimary   = textPrimary,
-            textSub       = textSub,
-            postPillState = postPillState
-        )
-
-        if (isOnPill && startDate != null) {
-            Spacer(Modifier.height(32.dp))
-            ActivePackSection(
-                startDate      = startDate!!,
-                pillCount      = pillCount,
-                cardBg         = cardBg,
-                pillBackground = pillBackground,
-                textPrimary    = textPrimary,
-                textSub        = textSub,
-                accentColor    = themeAccent,
-                onStop         = { viewModel.stopPillTracking() }
-            )
-        }
-
-        Spacer(Modifier.height(48.dp))
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text       = "Pill History",
-                fontFamily = BricolageGrotesque,
-                fontWeight = FontWeight.Bold,
-                fontSize   = SIZE_XL,
-                color      = textPrimary,
-                modifier   = Modifier.align(Alignment.CenterHorizontally)
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            if (pillHistory.isEmpty()) {
-                Box(
-                    modifier         = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "No pill history yet.",
-                        color      = textSub,
-                        fontFamily = BricolageGrotesque,
-                        fontSize   = SIZE_MD
-                    )
-                }
-            } else {
-                pillHistory.sortedByDescending { it.startDate }.forEach { pack ->
-                    SwipeToDeleteCard(onDelete = { viewModel.deletePillPack(pack.id) }) { isSwiping ->
-                        PillHistoryItem(
-                            pack           = pack,
-                            cardBg         = cardBg,
-                            textPrimary    = textPrimary,
-                            textSub        = textSub,
-                            pillBackground = pillBackground,
-                            activeAccent   = themeAccent,
-                            normalAccent   = textPrimary,
-                            isSwiping      = isSwiping
+        item(key = "pill-status") {
+            AnimatedContent(targetState = Pair(isOnPill, postPillState), label = "HeaderState") { (active, pillState) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier.size(76.dp).clip(RoundedCornerShape(24.dp)).background(scheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = when {
+                                active -> Icons.Rounded.Medication
+                                pillState == PostPillState.DISCOVERY -> Icons.Rounded.AutoAwesome
+                                pillState == PostPillState.LEARNING -> Icons.Rounded.AutoAwesome
+                                else -> Icons.Rounded.Medication
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                            tint = if (active) scheme.primary else activeAccent
                         )
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(18.dp))
+                    Text(
+                        text = when {
+                            active -> "Pill Tracking Active"
+                            pillState == PostPillState.DISCOVERY -> "Discovery Mode"
+                            pillState == PostPillState.LEARNING -> "Learning Mode"
+                            else -> "Pill Mode"
+                        },
+                        fontSize = 27.sp,
+                        fontFamily = BricolageGrotesque,
+                        fontWeight = FontWeight.Bold,
+                        color = textPrimary,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = when {
+                            active -> "Your active pill pack is being tracked.\nWithdrawal bleed date is estimated automatically."
+                            pillState == PostPillState.DISCOVERY -> "Your body is readjusting after the pill.\nPredictions are paused until your first natural cycle is logged."
+                            pillState == PostPillState.LEARNING -> "Predictions are available but still learning your new pattern.\nKeep logging to improve your personal estimates."
+                            else -> "Track a pack to keep your pill schedule and cycle context together."
+                        },
+                        fontSize = SIZE_LG,
+                        fontFamily = BricolageGrotesque,
+                        color = textSub,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 23.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
                 }
             }
         }
+
+        if (!isOnPill) {
+            item(key = "setup-pill") {
+                Button(
+                    onClick = onSetupClick,
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = scheme.primary, contentColor = scheme.onPrimary)
+                ) {
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Set up pill tracking", fontFamily = BricolageGrotesque, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        item(key = "post-pill-info") {
+            LifeAfterPillCard(
+                cardBg = cardBg,
+                textPrimary = textPrimary,
+                textSub = textSub,
+                postPillState = postPillState
+            )
+        }
+
+        if (isOnPill && startDate != null) {
+            item(key = "active-pack") {
+                ActivePackSection(
+                    startDate = startDate!!,
+                    pillCount = pillCount,
+                    nextEstimate = prediction?.mostLikelyPeriodStart,
+                    cardBg = cardBg,
+                    pillBackground = pillBackground,
+                    textPrimary = textPrimary,
+                    textSub = textSub,
+                    accentColor = themeAccent,
+                    onStop = { showStopConfirmation = true }
+                )
+            }
+        }
+
+        item(key = "pill-history-heading") {
+            Text(
+                text = "Pill history",
+                fontFamily = BricolageGrotesque,
+                fontWeight = FontWeight.Bold,
+                fontSize = SIZE_XL,
+                color = textPrimary,
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                textAlign = TextAlign.Start
+            )
+        }
+
+        if (sortedHistory.isEmpty()) {
+            item(key = "empty-pill-history") {
+                Box(Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Completed and stopped packs will appear here.",
+                        color = textSub,
+                        fontFamily = BricolageGrotesque,
+                        fontSize = SIZE_MD,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            items(items = sortedHistory, key = { it.id }) { pack ->
+                SwipeToDeleteCard(onDelete = { viewModel.deletePillPack(pack.id) }) { isSwiping ->
+                    PillHistoryItem(
+                        pack = pack,
+                        cardBg = cardBg,
+                        textPrimary = textPrimary,
+                        textSub = textSub,
+                        pillBackground = pillBackground,
+                        activeAccent = themeAccent,
+                        normalAccent = textPrimary,
+                        isSwiping = isSwiping
+                    )
+                }
+            }
+        }
+    }
+
+    if (showStopConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showStopConfirmation = false },
+            icon = { Icon(Icons.Rounded.StopCircle, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = {
+                Text(
+                    "Stop pill tracking?",
+                    fontFamily = BricolageGrotesque,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "This will mark your current pack as stopped and update your tracking mode. Your saved pack history will remain.",
+                    fontFamily = BricolageGrotesque,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showStopConfirmation = false
+                        viewModel.stopPillTracking()
+                    }
+                ) {
+                    Text("Stop tracking", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopConfirmation = false }) {
+                    Text("Keep tracking")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -206,6 +258,7 @@ fun PillTrackerScreen(viewModel: PeriodViewModel) {
 private fun ActivePackSection(
     startDate: LocalDate,
     pillCount: Int,
+    nextEstimate: LocalDate?,
     cardBg: Color,
     pillBackground: Color,
     textPrimary: Color,
@@ -313,6 +366,18 @@ private fun ActivePackSection(
                 ) {
                     drawRoundRect(color = pillBackground.copy(alpha = 0.4f), size = size, cornerRadius = CornerRadius(50f))
                     drawRoundRect(brush = progressBrush, size = Size(animatedProgress * size.width, size.height), cornerRadius = CornerRadius(50f))
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Rounded.EventAvailable, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Withdrawal bleed estimate", fontFamily = BricolageGrotesque, fontSize = SIZE_SM,
+                            fontWeight = FontWeight.SemiBold, color = textPrimary)
+                        Text(
+                            text = nextEstimate?.let { it.pretty() } ?: "More cycle data may be needed for an estimate",
+                            fontFamily = BricolageGrotesque, fontSize = SIZE_SM, color = textSub
+                        )
+                    }
                 }
             }
         }

@@ -52,10 +52,10 @@ fun SuccessFeedbackDialog(
     onDismiss: () -> Unit
 ) {
     val isDark = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary    = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor    = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -198,10 +198,10 @@ fun DestructiveConfirmationDialog(
     onDismiss: () -> Unit
 ) {
     val isDark = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val innerPillBg     = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-    val textPrimary    = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
+    val containerColor = MaterialTheme.colorScheme.surface
+    val innerPillBg     = if (isDark) Color.White.copy(alpha = 0.1f) else Color(0xFFF4DFE7)
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
     val dangerColor    = Color(0xFFEF5350)
 
     val configuration = LocalConfiguration.current
@@ -364,10 +364,10 @@ fun DestructiveConfirmationDialog(
 @Composable
 fun WhatsNewDialog(onDismiss: () -> Unit) {
     val isDark = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary    = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor    = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current

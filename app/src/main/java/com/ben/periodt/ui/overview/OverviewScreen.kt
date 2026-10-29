@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,6 +103,95 @@ private val SIZE_MD  = 14.sp
 private val SIZE_LG  = 15.sp
 private val SIZE_XL  = 20.sp
 
+internal data class InsightsChartSeries(
+    val points: List<Pair<Float, Float>>,
+    val dates: List<String>
+)
+
+internal data class InsightsSeries(
+    val bleeding: InsightsChartSeries,
+    val pain: InsightsChartSeries,
+    val bloodColorDistribution: List<Pair<String, Float>>
+)
+
+/** Derive all Insights charts in one pass; retain existing day-log and duration fallback semantics. */
+internal fun buildInsightsSeries(
+    cycles: List<PeriodViewModel.Cycle>,
+    dailyLogs: Map<String, PeriodViewModel.DailyLog>
+): InsightsSeries {
+    val bleedingScale = mapOf("spotting" to 0.5f, "light" to 1f, "medium" to 2f, "heavy" to 3f)
+    val formatter = DateTimeFormatter.ofPattern("MMM d")
+    val bleedingPoints = mutableListOf<Pair<Float, Float>>()
+    val painPoints = mutableListOf<Pair<Float, Float>>()
+    val dates = mutableListOf<String>()
+    val bloodColorCounts = linkedMapOf<String, Int>()
+    val orderedCycles = cycles.sortedBy { it.startDate }
+    var index = 0
+
+    orderedCycles.forEach { cycle ->
+        val end = cycle.endDate ?: cycle.startDate.plusDays(4)
+        var day = cycle.startDate
+        while (!day.isAfter(end)) {
+            val log = dailyLogs["${cycle.id}|$day"]
+            val bleeding = (log?.bleeding ?: cycle.bleeding).lowercase()
+            val bloodColor = (log?.bloodColor ?: cycle.bloodColor).lowercase()
+            bleedingPoints.add(index.toFloat() to (bleedingScale[bleeding] ?: 0f))
+            painPoints.add(index.toFloat() to (log?.painLevel ?: cycle.painLevel).toFloat())
+            bloodColorCounts[bloodColor] = (bloodColorCounts[bloodColor] ?: 0) + 1
+            dates.add(day.format(formatter))
+            day = day.plusDays(1)
+            index++
+        }
+    }
+
+    val totalColorDays = bloodColorCounts.values.sum()
+    val distribution = if (totalColorDays == 0) emptyList() else {
+        bloodColorCounts.entries.sortedByDescending { it.value }
+            .map { it.key to (it.value.toFloat() / totalColorDays) }
+    }
+    return InsightsSeries(
+        bleeding = InsightsChartSeries(bleedingPoints.toList(), dates.toList()),
+        pain = InsightsChartSeries(painPoints.toList(), dates.toList()),
+        bloodColorDistribution = distribution
+    )
+}
+
+/**
+ * Caps Canvas work for very long histories while preserving the first and last points.
+ * Bucket averages keep long-term trends visible; blood-colour distribution still uses every logged day.
+ */
+internal fun downsampleInsightsSeries(
+    series: InsightsChartSeries,
+    maxPoints: Int = 120
+): InsightsChartSeries {
+    require(maxPoints >= 2) { "maxPoints must be at least 2" }
+    if (series.points.size <= maxPoints) return series
+    val points = ArrayList<Pair<Float, Float>>(maxPoints)
+    val dates = ArrayList<String>(maxPoints)
+    val count = series.points.size
+    for (bucket in 0 until maxPoints) {
+        val start = bucket * count / maxPoints
+        val end = ((bucket + 1) * count / maxPoints).coerceAtLeast(start + 1)
+        var xTotal = 0f
+        var yTotal = 0f
+        for (index in start until end) {
+            xTotal += series.points[index].first
+            yTotal += series.points[index].second
+        }
+        val bucketSize = (end - start).toFloat()
+        // Canvas maps x by the plotted point count, so the downsampled x values must be dense indices.
+        val y = when (bucket) {
+            0 -> series.points.first().second
+            maxPoints - 1 -> series.points.last().second
+            else -> yTotal / bucketSize
+        }
+        points.add(bucket.toFloat() to y)
+        val labelIndex = if (bucket == 0) 0 else (end - 1).coerceAtMost(series.dates.lastIndex)
+        dates.add(series.dates.getOrElse(labelIndex) { "" })
+    }
+    return InsightsChartSeries(points, dates)
+}
+
 @Composable
 fun OverviewScreen(viewModel: PeriodViewModel) {
     val cycles        by viewModel.cycles.collectAsState()
@@ -122,54 +212,32 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
     val screenScroll = rememberScrollState()
     val isDark       = LocalAppIsDark.current
 
-    val gradTop         = if (isDark) Color(0xFF7B8FA3) else Color(0xFF8FA0B1)
-    val gradMid         = if (isDark) Color(0xFF7288A0) else Color(0xFF8799B0)
-    val gradBottom      = if (isDark) Color(0xFF5A7396) else Color(0xFF6E87A7)
-    val onGradient      = Color.White
-    val onGradientMuted = onGradient.copy(alpha = if (isDark) 0.70f else 0.55f)
+    val gradTop         = if (isDark) Color(0xFF553044) else Color(0xFFE6C1D0)
+    val gradMid         = if (isDark) Color(0xFF462A3B) else Color(0xFFF0D4DF)
+    val gradBottom      = if (isDark) Color(0xFF38212F) else Color(0xFFF7E8EE)
+    val onGradient      = if (isDark) Color(0xFFFFF2F7) else Color(0xFF613248)
+    val onGradientMuted = if (isDark) onGradient.copy(alpha = 0.70f) else Color(0xFF795C6B)
 
-    val surface = if (isDark) Color(0xFF141820) else Color(0xFFF5F7F9)
-    val textCol = if (isDark) Color(0xFFF5F7FA) else Color(0xFF0F172A)
-    val subCol  = if (isDark) Color(0xFFBFC6D1) else Color(0xFF1b1b1b)
+    val surface = MaterialTheme.colorScheme.surface
+    val textCol = MaterialTheme.colorScheme.onSurface
+    val subCol  = MaterialTheme.colorScheme.onSurfaceVariant
 
-    val bleedingChartColor = Color(0xFFD89046)
-    val painChartColor     = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
+    val bleedingChartColor = Color(0xFFB95F83)
+    val painChartColor     = if (isDark) Color(0xFF9B7890) else Color(0xFFC87898)
 
     val avgPeriodLength = calculatePeriodLength(cycles).takeIf { cycles.any { c -> c.endDate != null } }
     val avgCycleLength  = calculateAvgCycleLength(cycles)
 
     val dailyLogs by viewModel.dailyLogs.collectAsState()
-
-    val recentTrends = remember(cycles, dailyLogs) {
-        val recentCycles = cycles.sortedBy { it.startDate }.takeLast(6)
-        if (recentCycles.isEmpty()) return@remember null
-
-        var totalPain = 0; var totalDays = 0
-        val bleedingCounts = mutableMapOf<String, Int>()
-        val colorCounts    = mutableMapOf<String, Int>()
-
-        recentCycles.forEach { cycle ->
-            val end = cycle.endDate ?: cycle.startDate.plusDays(4)
-            var day = cycle.startDate
-            while (!day.isAfter(end)) {
-                val key = "${cycle.id}|$day"
-                val b   = dailyLogs[key]?.bleeding   ?: cycle.bleeding
-                val c   = dailyLogs[key]?.bloodColor ?: cycle.bloodColor
-                val p   = dailyLogs[key]?.painLevel  ?: cycle.painLevel
-                bleedingCounts[b] = (bleedingCounts[b] ?: 0) + 1
-                colorCounts[c]    = (colorCounts[c]    ?: 0) + 1
-                totalPain += p; totalDays++
-                day = day.plusDays(1)
-            }
-        }
-        if (totalDays == 0) return@remember null
-        Triple(
-            bleedingCounts.maxByOrNull { it.value }?.key ?: "Medium",
-            colorCounts.maxByOrNull    { it.value }?.key ?: "Bright Red",
-            round(totalPain.toFloat() / totalDays).toInt()
-        )
+    val insightsSeries = remember(cycles, dailyLogs) {
+        buildInsightsSeries(cycles, dailyLogs)
     }
-    val recentCyclesCount = minOf(cycles.size, 6)
+    val bleedingChartSeries = remember(insightsSeries.bleeding) {
+        downsampleInsightsSeries(insightsSeries.bleeding)
+    }
+    val painChartSeries = remember(insightsSeries.pain) {
+        downsampleInsightsSeries(insightsSeries.pain)
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
         Column(
@@ -180,14 +248,33 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
                 .padding(bottom = 90.dp)
                 .padding(top = 16.dp)
         ) {
-//            if (!isOnPill && !isDiscoveryMode && !isLearningMode) {
-//                RecentTrendsBanner(trends = recentTrends, cycleCount = recentCyclesCount)
-//            }
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Insights",
+                    fontFamily = BricolageGrotesque,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = if (cycles.isEmpty()) {
+                        "Your cycle patterns will appear here as you log."
+                    } else {
+                        "${cycles.size} recorded ${if (cycles.size == 1) "cycle" else "cycles"} · estimates are guides, not guarantees"
+                    },
+                    fontFamily = BricolageGrotesque,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             CombinedStatsCard(
                 totalCycles = "${cycles.size}",
-                avgPeriod   = avgPeriodLength?.let { "$it d" } ?: "0",
-                avgCycle    = avgCycleLength?.let  { "$it d" } ?: "0"
+                avgPeriod   = avgPeriodLength?.let { "$it d" } ?: "—",
+                avgCycle    = avgCycleLength?.let  { "$it d" } ?: "—"
             )
 
             Spacer(Modifier.height(14.dp))
@@ -235,12 +322,13 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Bleeding intensity", surface, textCol) {
-                val (bleedingPoints, bleedingDates) = remember(cycles, dailyLogs) { bleedingSeriesDailyVM(cycles, dailyLogs) }
+                val bleedingPoints = bleedingChartSeries.points
+                val bleedingDates = bleedingChartSeries.dates
                 ScrollableLineChart(
                     points = bleedingPoints, dates = bleedingDates, lineColor = bleedingChartColor,
                     yLabels = listOf("S", "L", "M", "H"), yMax = 3f, showArea = true,
-                    gridColor  = if (isDark) Color(0xFF2A2F36) else Color(0xFFEAEAEA),
-                    axisColor  = if (isDark) Color(0xFF343A43) else Color(0xFFE0E0E0),
+                    gridColor  = if (isDark) Color(0xFF45313F) else Color(0xFFEADCE3),
+                    axisColor  = if (isDark) Color(0xFF5A4452) else Color(0xFFDFCBD6),
                     labelColor = subCol, surface = surface,
                     modifier = Modifier.fillMaxWidth().height(220.dp)
                 )
@@ -249,12 +337,13 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
             Spacer(Modifier.height(14.dp))
 
             MinimalChartCard("Pain level", surface, textCol) {
-                val (painPoints, painDates) = remember(cycles, dailyLogs) { painSeriesDailyVM(cycles, dailyLogs) }
+                val painPoints = painChartSeries.points
+                val painDates = painChartSeries.dates
                 ScrollableLineChart(
                     points = painPoints, dates = painDates, lineColor = painChartColor,
                     yLabels = (0..10 step 2).map { "$it" }, yMax = 10f, showArea = true,
-                    gridColor  = if (isDark) Color(0xFF2A2F36) else Color(0xFFEAEAEA),
-                    axisColor  = if (isDark) Color(0xFF343A43) else Color(0xFFE0E0E0),
+                    gridColor  = if (isDark) Color(0xFF45313F) else Color(0xFFEADCE3),
+                    axisColor  = if (isDark) Color(0xFF5A4452) else Color(0xFFDFCBD6),
                     labelColor = subCol, surface = surface,
                     modifier = Modifier.fillMaxWidth().height(220.dp)
                 )
@@ -264,7 +353,7 @@ fun OverviewScreen(viewModel: PeriodViewModel) {
 
             MinimalChartCard("Blood color", surface, textCol) {
                 BloodColorPieChart(
-                    data       = remember(cycles, dailyLogs) { bloodColorDistributionVM(cycles, dailyLogs) },
+                    data       = insightsSeries.bloodColorDistribution,
                     surface    = surface,
                     labelColor = subCol,
                     modifier   = Modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 8.dp)
@@ -288,10 +377,10 @@ private fun CombinedStatsCard(
     val interactionSource = remember { MutableInteractionSource() }
 
     val isDark       = LocalAppIsDark.current
-    val surfaceColor = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
-    val dividerColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f)
-    val valueColor   = if (isDark) Color.White else Color(0xFF0F172A)
-    val titleColor   = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
+    val valueColor   = MaterialTheme.colorScheme.onSurface
+    val titleColor   = MaterialTheme.colorScheme.onSurfaceVariant
 
     val gentleSpring = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 
@@ -417,7 +506,7 @@ private fun MinimalChartCard(
     content: @Composable () -> Unit
 ) {
     val isDark      = LocalAppIsDark.current
-    val cardSurface = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
+    val cardSurface = MaterialTheme.colorScheme.surface
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -463,7 +552,7 @@ private fun BloodColorPieChart(
     val colorMap = mapOf(
         "bright red" to Color(0xFFFF8B94),
         "dark red"   to Color(0xFF4E1A1A),
-        "brown"      to Color(0xFFD89046),
+        "brown"      to Color(0xFFB95F83),
         "pink"       to Color(0xFFFFD3B6),
         "orange"     to Color(0xFFA8E6CF),
         "purple"     to Color(0xFF8089D2)
@@ -472,7 +561,7 @@ private fun BloodColorPieChart(
     val total       = data.sumOf { it.second.toDouble() }.toFloat().coerceAtLeast(0.0001f)
     val legendItems = data.map { (label, value) ->
         val cleanLabel = label.lowercase().trim()
-        Triple(label.replaceFirstChar { it.uppercase() }, (value / total) * 100f, colorMap[cleanLabel] ?: Color.Gray)
+        Triple(label.replaceFirstChar { it.uppercase() }, (value / total) * 100f, colorMap[cleanLabel] ?: MaterialTheme.colorScheme.tertiary)
     }
 
     Column(modifier = modifier) {
@@ -518,7 +607,7 @@ private fun BloodColorPieChart(
                         fontFamily = BricolageGrotesque,
                         fontSize   = SIZE_XS,
                         fontWeight = FontWeight.Bold,
-                        color      = if (isDark) color else Color(0xFF1B1B1B)
+                        color      = if (isDark) color else Color(0xFF2A1C26)
                     )
                 }
             }
@@ -637,6 +726,12 @@ private fun LineChartContent(
         val areaPath = Path()
         var prevXPos = 0f; var prevYPos = 0f
 
+        val datePaint = Paint().apply {
+            color = labelColor.toArgb()
+            textSize = with(density) { SIZE_XXS.toPx() }
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        }
         points.forEachIndexed { index, (x, y) ->
             val xPos = chartLeft + (x / denom) * chartWidth
             val yPos = chartBottom - (y / yMax) * chartHeight
@@ -649,15 +744,8 @@ private fun LineChartContent(
                 if (showArea) areaPath.cubicTo(cpX, prevYPos, cpX, yPos, xPos, yPos)
             }
             prevXPos = xPos; prevYPos = yPos
-
             if (index < dates.size) {
-                val paint = Paint().apply {
-                    color     = labelColor.toArgb()
-                    textSize  = with(density) { SIZE_XXS.toPx() }
-                    textAlign = Paint.Align.CENTER
-                    typeface  = Typeface.create("sans-serif", Typeface.BOLD)
-                }
-                drawContext.canvas.nativeCanvas.drawText(dates[index], xPos, size.height - 10.dp.toPx(), paint)
+                drawContext.canvas.nativeCanvas.drawText(dates[index], xPos, size.height - 10.dp.toPx(), datePaint)
             }
         }
 
@@ -684,63 +772,6 @@ private fun LineChartContent(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-private fun bleedingSeriesDailyVM(
-    cycles: List<PeriodViewModel.Cycle>,
-    dailyLogs: Map<String, PeriodViewModel.DailyLog>
-): Pair<List<Pair<Float, Float>>, List<String>> {
-    val map       = mapOf("spotting" to 0.5f, "light" to 1f, "medium" to 2f, "heavy" to 3f)
-    val formatter = DateTimeFormatter.ofPattern("MMM d")
-    val points    = mutableListOf<Pair<Float, Float>>()
-    val dates     = mutableListOf<String>()
-    var index     = 0
-    cycles.sortedBy { it.startDate }.forEach { cycle ->
-        val end = cycle.endDate ?: cycle.startDate.plusDays(4); var day = cycle.startDate
-        while (!day.isAfter(end)) {
-            val key = "${cycle.id}|$day"
-            points.add(index.toFloat() to (map[(dailyLogs[key]?.bleeding ?: cycle.bleeding).lowercase()] ?: 0f))
-            dates.add(day.format(formatter)); day = day.plusDays(1); index++
-        }
-    }
-    return points to dates
-}
-
-private fun painSeriesDailyVM(
-    cycles: List<PeriodViewModel.Cycle>,
-    dailyLogs: Map<String, PeriodViewModel.DailyLog>
-): Pair<List<Pair<Float, Float>>, List<String>> {
-    val formatter = DateTimeFormatter.ofPattern("MMM d")
-    val points    = mutableListOf<Pair<Float, Float>>()
-    val dates     = mutableListOf<String>()
-    var index     = 0
-    cycles.sortedBy { it.startDate }.forEach { cycle ->
-        val end = cycle.endDate ?: cycle.startDate.plusDays(4); var day = cycle.startDate
-        while (!day.isAfter(end)) {
-            val key = "${cycle.id}|$day"
-            points.add(index.toFloat() to (dailyLogs[key]?.painLevel ?: cycle.painLevel).toFloat())
-            dates.add(day.format(formatter)); day = day.plusDays(1); index++
-        }
-    }
-    return points to dates
-}
-
-private fun bloodColorDistributionVM(
-    cycles: List<PeriodViewModel.Cycle>,
-    dailyLogs: Map<String, PeriodViewModel.DailyLog>
-): List<Pair<String, Float>> {
-    val counts = mutableMapOf<String, Int>()
-    cycles.forEach { cycle ->
-        val end = cycle.endDate ?: cycle.startDate.plusDays(4); var day = cycle.startDate
-        while (!day.isAfter(end)) {
-            val key = "${cycle.id}|$day"
-            val color = (dailyLogs[key]?.bloodColor ?: cycle.bloodColor).lowercase()
-            counts[color] = (counts[color] ?: 0) + 1; day = day.plusDays(1)
-        }
-    }
-    val total = counts.values.sum()
-    if (total == 0) return emptyList()
-    return counts.entries.sortedByDescending { it.value }.map { it.key to (it.value.toFloat() / total) }
-}
-
 private fun calculateAvgCycleLength(cycles: List<PeriodViewModel.Cycle>): Int? {
     val lengths = cycles.sortedBy { it.startDate }.zipWithNext { a, b ->
         ChronoUnit.DAYS.between(a.startDate, b.startDate).toInt()

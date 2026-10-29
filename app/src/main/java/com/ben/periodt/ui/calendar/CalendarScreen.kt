@@ -1,11 +1,9 @@
 package com.ben.periodt.ui.calendar
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -38,6 +36,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -109,6 +108,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -135,10 +135,6 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.absoluteValue
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -166,9 +162,80 @@ private val SIZE_LG  = 15.sp
 private val SIZE_XL  = 20.sp
 
 
+internal data class CalendarDayIndex(
+    val phases: Map<LocalDate, Int>,
+    val cycles: Map<LocalDate, PeriodViewModel.Cycle>,
+    val packs: Map<LocalDate, PeriodViewModel.PillPack>,
+    val today: LocalDate,
+    val ovulationDay: LocalDate?
+)
+
+internal fun buildCalendarDayIndex(
+    today: LocalDate,
+    cycles: List<PeriodViewModel.Cycle>,
+    prediction: Prediction?,
+    transitioning: Boolean,
+    onPill: Boolean,
+    packs: List<PeriodViewModel.PillPack>
+): CalendarDayIndex {
+    val phasesByDay = HashMap<LocalDate, Int>()
+    val cyclesByDay = HashMap<LocalDate, PeriodViewModel.Cycle>()
+    val packsByDay = HashMap<LocalDate, PeriodViewModel.PillPack>()
+    val currentMonth = YearMonth.from(today)
+    // Include the neighboring calendar weeks and one more day for continuous-range edge checks.
+    var day = currentMonth.minusMonths(12).atDay(1).minusDays(8)
+    val lastDay = currentMonth.plusMonths(12).atEndOfMonth().plusDays(8)
+    while (!day.isAfter(lastDay)) {
+        val cycle = cycles.firstOrNull { c ->
+            val end = c.endDate ?: c.startDate.plusDays(6)
+            !day.isBefore(c.startDate) && !day.isAfter(end)
+        }
+        val pack = packs.firstOrNull { p ->
+            val end = p.endDate ?: p.startDate.plusDays((p.pillCount - 1).toLong())
+            !day.isBefore(p.startDate) && !day.isAfter(end)
+        }
+        if (cycle != null) cyclesByDay[day] = cycle
+        if (pack != null) packsByDay[day] = pack
+        val predictedPeriod = prediction?.let { p ->
+            !day.isBefore(p.mostLikelyPeriodStart) &&
+                day.isBefore(p.mostLikelyPeriodStart.plusDays(p.periodLength.toLong()))
+        } == true
+        val fertile = prediction?.let { p ->
+            !onPill && p.fertileWindow.start != LocalDate.MIN && p.fertileWindow.contains(day)
+        } == true
+        phasesByDay[day] = when {
+            cycle != null -> 1
+            pack != null -> 5
+            packs.isEmpty() && !transitioning && predictedPeriod -> 2
+            packs.isEmpty() && !transitioning && fertile -> 3
+            else -> 0
+        }
+        day = day.plusDays(1)
+    }
+    return CalendarDayIndex(phasesByDay, cyclesByDay, packsByDay, today, prediction?.ovulationDay)
+}
+
+/**
+ * Returns a new compact-calendar state only when a deliberate vertical gesture crosses the threshold.
+ * Upward movement collapses the month grid; downward movement expands it only at the history list's top.
+ */
+internal fun nextCalendarCollapsedState(
+    accumulatedDeltaY: Float,
+    isCollapsed: Boolean,
+    historyAtTop: Boolean,
+    thresholdPx: Float
+): Boolean? {
+    require(thresholdPx >= 0f) { "thresholdPx must not be negative" }
+    return when {
+        accumulatedDeltaY < -thresholdPx && !isCollapsed -> true
+        accumulatedDeltaY > thresholdPx && isCollapsed && historyAtTop -> false
+        else -> null
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalendarScreen(viewModel: PeriodViewModel) {
+fun CalendarScreen(viewModel: PeriodViewModel, onAddCycleClick: () -> Unit = {}) {
     val cycles by viewModel.cycles.collectAsState()
     val prediction by viewModel.prediction.collectAsState()
     val isDark = LocalAppIsDark.current
@@ -177,6 +244,7 @@ fun CalendarScreen(viewModel: PeriodViewModel) {
     val pillStartDate by viewModel.pillPackStartDate.collectAsState()
     val pillStopDate by viewModel.pillStopDate.collectAsState()
     val pillPacks by viewModel.pillPacks.collectAsState()
+    val pillPackCount by viewModel.pillPackCount.collectAsState()
     val dailyLogs by viewModel.dailyLogs.collectAsState()
     var dayLogTarget by remember { mutableStateOf<Pair<PeriodViewModel.Cycle, LocalDate>?>(null) }
 
@@ -217,51 +285,64 @@ fun CalendarScreen(viewModel: PeriodViewModel) {
 
     val listState  = rememberLazyListState()
     var isCollapsed by remember { mutableStateOf(false) }
-    val scope      = rememberCoroutineScope()
+    var accumulatedVerticalScroll by remember { mutableFloatStateOf(0f) }
+    val collapseThresholdPx = with(LocalDensity.current) { 16.dp.toPx() }
 
+    // Keep both calendar modes aligned without starting a second animation during a vertical swipe.
     LaunchedEffect(isCollapsed) {
         if (isCollapsed) {
             val visibleMonth = state.firstVisibleMonth.yearMonth
-            val currentMonth = YearMonth.from(currentDate)
-
             val targetDate = if (visibleMonth == currentMonth) {
-                
                 currentDate
             } else {
-                
                 state.firstVisibleMonth.weekDays.flatten()
                     .firstOrNull { it.position == DayPosition.MonthDate }?.date ?: currentDate
             }
-
-            weekState.animateScrollToWeek(targetDate)
+            weekState.scrollToWeek(targetDate)
         } else {
-            
             val targetDate = weekState.firstVisibleWeek.days.getOrNull(3)?.date ?: currentDate
-            state.animateScrollToMonth(YearMonth.from(targetDate))
+            state.scrollToMonth(YearMonth.from(targetDate))
         }
     }
 
-    val nestedScrollConnection = remember {
+    val nestedScrollConnection = remember(collapseThresholdPx) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                if (delta < 0 && !isCollapsed) { isCollapsed = true; return Offset.Zero }
-                if (delta > 0 && isCollapsed && listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-                    isCollapsed = false; return Offset.Zero
+                val historyAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                when {
+                    !isCollapsed && available.y < 0f -> accumulatedVerticalScroll += available.y
+                    isCollapsed && historyAtTop && available.y > 0f -> accumulatedVerticalScroll += available.y
+                    else -> accumulatedVerticalScroll = 0f
+                }
+                val nextState = nextCalendarCollapsedState(
+                    accumulatedDeltaY = accumulatedVerticalScroll,
+                    isCollapsed = isCollapsed,
+                    historyAtTop = historyAtTop,
+                    thresholdPx = collapseThresholdPx
+                )
+                if (nextState != null) {
+                    isCollapsed = nextState
+                    accumulatedVerticalScroll = 0f
                 }
                 return Offset.Zero
             }
         }
     }
 
-    val entrySurface = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val entryText    = if (isDark) Color.White else Color(0xFF0F172A)
-    val accentColor  = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val entrySurface = if (isDark) Color(0xFF2A1C26) else Color.White
+    val entryText    = if (isDark) Color.White else Color(0xFF321B28)
+    val accentColor  = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
 
     var cycleToEdit by remember { mutableStateOf<PeriodViewModel.Cycle?>(null) }
 
     val postPillState  by viewModel.postPillState.collectAsState()
     val isLearningMode = postPillState == PostPillState.LEARNING
+    val dayIndex = remember(cycles, prediction, isTransitioning, isOnPill, pillPacks, currentDate) {
+        buildCalendarDayIndex(currentDate, cycles, prediction, isTransitioning, isOnPill, pillPacks)
+    }
+    val dailyLogCountsByCycle = remember(dailyLogs) {
+        dailyLogs.keys.groupingBy { it.substringBefore('|') }.eachCount()
+    }
 
     LaunchedEffect(Unit) { viewModel.refreshState() }
 
@@ -271,26 +352,32 @@ fun CalendarScreen(viewModel: PeriodViewModel) {
             .padding(horizontal = 16.dp)
             .nestedScroll(nestedScrollConnection)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(animationSpec = tween(durationMillis = 300, easing = LinearOutSlowInEasing))
-        ) {
-            CalendarCard(
-                isCollapsed     = isCollapsed,
-                state           = state,
-                weekState       = weekState,
-                cycles          = cycles,
-                prediction      = prediction,
-                isTransitioning = isTransitioning,
-                isLearningMode  = isLearningMode,
-                isOnPill        = isOnPill,
-                pillPacks       = pillPacks,
-                firstDayOfWeek  = firstDayOfWeek,
-                dailyLogs       = dailyLogs,
-                onDayTapped     = { cycle, date -> dayLogTarget = Pair(cycle, date) }
-            )
-        }
+        CycleHeroCard(
+            cycles = cycles, prediction = prediction, onPill = isOnPill,
+            transitioning = isTransitioning, learning = isLearningMode, compact = isCollapsed,
+            onLogToday = {
+                val match = cycles.firstOrNull { cycle ->
+                    val end = cycle.endDate ?: cycle.startDate.plusDays(6)
+                    !currentDate.isBefore(cycle.startDate) && !currentDate.isAfter(end)
+                }
+                if (match != null) dayLogTarget = match to currentDate else onAddCycleClick()
+            }
+        )
+        CalendarCard(
+            isCollapsed     = isCollapsed,
+            state           = state,
+            weekState       = weekState,
+            cycles          = cycles,
+            prediction      = prediction,
+            dayIndex        = dayIndex,
+            isTransitioning = isTransitioning,
+            isLearningMode  = isLearningMode,
+            isOnPill        = isOnPill,
+            pillPacks       = pillPacks,
+            firstDayOfWeek  = firstDayOfWeek,
+            dailyLogs       = dailyLogs,
+            onDayTapped     = { cycle, date -> dayLogTarget = Pair(cycle, date) }
+        )
 
         LazyColumn(
             modifier            = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
@@ -308,8 +395,8 @@ fun CalendarScreen(viewModel: PeriodViewModel) {
                     isTransitioning   = isTransitioning,
                     isOnPill          = isOnPill,
                     pillStopDate      = pillStopDate,
-                    pillPackStartDate = viewModel.pillPackStartDate.collectAsState().value,
-                    pillPackCount     = viewModel.pillPackCount.collectAsState().value
+                    pillStartDate = pillStartDate,
+                    pillPackCount     = pillPackCount
                 )
             }
 
@@ -344,7 +431,7 @@ fun CalendarScreen(viewModel: PeriodViewModel) {
                         sub            = entryText.copy(alpha = 0.6f),
                         accent         = entryText,
                         isSwiping      = isSwiping,
-                        customDayCount = dailyLogs.count { (key, _) -> key.startsWith("${cycle.id}|") },
+                        customDayCount = dailyLogCountsByCycle[cycle.id.toString()] ?: 0,
                         onEditClick    = { cycleToEdit = cycle }
                     )
                 }
@@ -416,6 +503,79 @@ fun CalendarScreen(viewModel: PeriodViewModel) {
     }
 }
 
+@Composable
+private fun CycleHeroCard(
+    cycles: List<PeriodViewModel.Cycle>, prediction: Prediction?, onPill: Boolean,
+    transitioning: Boolean, learning: Boolean, compact: Boolean, onLogToday: () -> Unit
+) {
+    val dark = LocalAppIsDark.current
+    val today = LocalDate.now()
+    val accent = if (dark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
+    val foreground = if (dark) Color(0xFFFFF2F7) else Color(0xFF321B28)
+    val muted = if (dark) Color(0xFFD4BAC7) else Color(0xFF795C6B)
+    val surface = if (dark) Color(0xFF2A1C26) else Color(0xFFFFFCFA)
+    val edge = if (dark) Color(0xFF654558) else Color(0xFFE9D8E0)
+    val recentCycle = remember(cycles, today) {
+        cycles.filter { !it.startDate.isAfter(today) }.maxByOrNull { it.startDate }
+    }
+    val cycleDay = recentCycle?.let { ChronoUnit.DAYS.between(it.startDate, today).toInt().coerceAtLeast(0) + 1 }
+    val formatter = remember { DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()) }
+    val title = when {
+        onPill -> "Pill tracking active"
+        transitioning -> "Getting to know your cycle"
+        learning -> "Learning your pattern"
+        cycleDay != null -> "Cycle day $cycleDay"
+        else -> "Your cycle starts here"
+    }
+    val estimate = when {
+        prediction == null && transitioning -> "Predictions are paused while your body readjusts."
+        prediction == null -> "Log a period to build your personal estimates."
+        prediction.mostLikelyPeriodStart.isBefore(today) -> "Latest estimate: ${prediction.mostLikelyPeriodStart.format(formatter)} · Keep logging to refresh it."
+        onPill -> "Withdrawal bleed estimate · ${prediction.mostLikelyPeriodStart.format(formatter)}"
+        else -> "Next period estimate · ${prediction.mostLikelyPeriodStart.format(formatter)}"
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp),
+        shape = RoundedCornerShape(if (compact) 24.dp else 30.dp),
+        colors = CardDefaults.cardColors(containerColor = surface), border = BorderStroke(1.dp, edge)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (compact) 9.dp else 15.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                Modifier.size(if (compact) 46.dp else 58.dp).clip(RoundedCornerShape(if (compact) 16.dp else 21.dp))
+                    .background(if (dark) Color(0xFF3C2836) else Color(0xFFF4DFE7)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (cycleDay != null && !onPill && !transitioning) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Text("$cycleDay", color = if (dark) Color(0xFFFFF2F7) else Color(0xFF613248),
+                            fontWeight = FontWeight.Bold, fontSize = if (compact) 18.sp else 23.sp)
+                        if (!compact) Text("DAY", color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else Icon(Icons.Rounded.CalendarToday, null, tint = accent, modifier = Modifier.size(if (compact) 21.dp else 26.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (!compact) Text("YOUR CYCLE", color = muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
+                Text(title, color = foreground, fontFamily = BricolageGrotesque, fontWeight = FontWeight.Bold,
+                    fontSize = if (compact) 16.sp else 20.sp, maxLines = 1)
+                Text(estimate, color = muted, fontFamily = BricolageGrotesque, fontSize = if (compact) 11.sp else 12.sp,
+                    maxLines = if (compact) 1 else 2, lineHeight = 16.sp)
+            }
+            Button(
+                onClick = onLogToday, modifier = Modifier.height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(horizontal = if (compact) 11.dp else 14.dp, vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White)
+            ) {
+                if (!compact) { Icon(Icons.Rounded.EventAvailable, null, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(5.dp)) }
+                Text(if (compact) "Log" else "Log today", fontSize = if (compact) 12.sp else 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DayLogDialog(
@@ -427,17 +587,17 @@ fun DayLogDialog(
     onClear: () -> Unit
 ) {
     val isDark = LocalAppIsDark.current
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surface
+    val accentColor = scheme.primary
+    val surfaceFallback = scheme.surfaceVariant
+    val pillBackground = scheme.surfaceVariant
+    val textPrimary = scheme.onSurface
+    val textSub = scheme.onSurfaceVariant
 
-    val containerColor  = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val accentColor     = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
-    val surfaceFallback = if (isDark) Color.Black else Color.Black.copy(alpha = 0.05f)
-    val pillBackground  = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-    val textPrimary     = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-
-    val pastelGreen  = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-    val pastelOrange = Color(0xFFa68e74)
-    val pastelMaroon = Color(0xFF4E1A1A)
+    val pastelGreen = scheme.primaryContainer
+    val pastelOrange = scheme.tertiaryContainer
+    val pastelMaroon = scheme.errorContainer
 
     val bleedingOptions = listOf("Heavy", "Medium", "Light", "Spotting")
     val colorOptions    = listOf("Bright Red", "Dark Red", "Brown")
@@ -560,7 +720,15 @@ fun DayLogDialog(
                         bleedingOptions.forEach { option ->
                             val isSelected      = bleeding.equals(option, ignoreCase = true)
                             val activePillColor = when (option) { "Heavy" -> pastelMaroon; "Medium" -> pastelOrange; else -> pastelGreen }
-                            EntryStylePill(option, isSelected, activePillColor, Color.White, textSub, surfaceFallback) { bleeding = option }
+                            EntryStylePill(
+                                option, isSelected, activePillColor,
+                                when (option) {
+                                    "Heavy" -> scheme.onErrorContainer
+                                    "Medium" -> scheme.onTertiaryContainer
+                                    else -> scheme.onPrimaryContainer
+                                },
+                                textSub, surfaceFallback
+                            ) { bleeding = option }
                         }
                     }
                 }
@@ -578,7 +746,15 @@ fun DayLogDialog(
                         colorOptions.forEach { option ->
                             val isSelected      = bloodColor.equals(option, ignoreCase = true)
                             val activePillColor = when (option) { "Bright Red" -> pastelGreen; "Dark Red" -> Color(0xFF4E1A1A); "Brown" -> pastelOrange; else -> accentColor }
-                            EntryStylePill(option, isSelected, activePillColor, Color.White, textSub, surfaceFallback) { bloodColor = option }
+                            EntryStylePill(
+                                option, isSelected, activePillColor,
+                                when (option) {
+                                    "Dark Red" -> Color.White
+                                    "Brown" -> scheme.onTertiaryContainer
+                                    else -> scheme.onPrimaryContainer
+                                },
+                                textSub, surfaceFallback
+                            ) { bloodColor = option }
                         }
                     }
                 }
@@ -664,10 +840,10 @@ fun CalendarLegend(
     pillPacks: List<PeriodViewModel.PillPack> = emptyList()
 ) {
     val isDark           = LocalAppIsDark.current
-    val textSub          = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
+    val textSub          = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
     val colorPeriodSolid = Color(0xFFA5231C)
-    val packColor        = Color(0xFFa68e74)
-    val ColorFertileSolid = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
+    val packColor        = Color(0xFFA77C91)
+    val ColorFertileSolid = if (isDark) Color(0xFF9B7890) else Color(0xFFC87898)
 
 
     Row(
@@ -708,12 +884,13 @@ private fun LegendItem(color: Color, label: String, textColor: Color) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalendarCard(
+private fun CalendarCard(
     isCollapsed: Boolean,
     state: CalendarState,
     weekState: WeekCalendarState,
     cycles: List<PeriodViewModel.Cycle>,
     prediction: Prediction?,
+    dayIndex: CalendarDayIndex,
     isTransitioning: Boolean = false,
     isLearningMode: Boolean = false,
     isOnPill: Boolean = false,
@@ -725,9 +902,9 @@ fun CalendarCard(
     val isDark = LocalAppIsDark.current
     val scope  = rememberCoroutineScope()
 
-    val backgroundBrush    = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
-    val onCardContent      = if (isDark) Color.White else Color.Black
-    val onCardContentMuted = onCardContent.copy(alpha = 0.70f)
+    val backgroundBrush    = MaterialTheme.colorScheme.surface
+    val onCardContent      = MaterialTheme.colorScheme.onSurface
+    val onCardContentMuted = MaterialTheme.colorScheme.onSurfaceVariant
 
     val daysOfWeek = remember(firstDayOfWeek) { daysOfWeek(firstDayOfWeek = firstDayOfWeek) }
 
@@ -818,41 +995,25 @@ fun CalendarCard(
 
                 Spacer(Modifier.height(8.dp))
 
-                AnimatedContent(targetState = isCollapsed, label = "CalendarType") { collapsed ->
-                    if (collapsed) {
-                        WeekCalendar(state = weekState, dayContent = { weekDay ->
-                            DayCellEnhanced(
-                                date            = weekDay.date,
-                                isCurrentMonth  = true,
-                                cycles          = cycles,
-                                prediction      = prediction,
-                                isTransitioning = isTransitioning,
-                                isLearningMode  = isLearningMode,
-                                isOnPill        = isOnPill,
-                                pillPacks       = pillPacks,
-                                dailyLogs       = dailyLogs,
-                                onDayTapped     = onDayTapped
-                            )
-                        })
-                    } else {
-                        HorizontalCalendar(state = state, dayContent = { calendarDay ->
-                            DayCellEnhanced(
-                                date            = calendarDay.date,
-                                isCurrentMonth  = calendarDay.position == DayPosition.MonthDate,
-                                cycles          = cycles,
-                                prediction      = prediction,
-                                isTransitioning = isTransitioning,
-                                isLearningMode  = isLearningMode,
-                                isOnPill        = isOnPill,
-                                pillPacks       = pillPacks,
-                                dailyLogs       = dailyLogs,
-                                onDayTapped     = onDayTapped
-                            )
-                        })
-                    }
+                if (isCollapsed) {
+                    WeekCalendar(state = weekState, dayContent = { weekDay ->
+                        DayCellEnhanced(
+                            date = weekDay.date, isCurrentMonth = true, dayIndex = dayIndex,
+                            isTransitioning = isTransitioning, isLearningMode = isLearningMode,
+                            isOnPill = isOnPill, dailyLogs = dailyLogs, onDayTapped = onDayTapped
+                        )
+                    })
+                } else {
+                    HorizontalCalendar(state = state, dayContent = { calendarDay ->
+                        DayCellEnhanced(
+                            date = calendarDay.date, isCurrentMonth = calendarDay.position == DayPosition.MonthDate,
+                            dayIndex = dayIndex, isTransitioning = isTransitioning, isLearningMode = isLearningMode,
+                            isOnPill = isOnPill, dailyLogs = dailyLogs, onDayTapped = onDayTapped
+                        )
+                    })
                 }
 
-                AnimatedVisibility(visible = !isCollapsed, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                if (!isCollapsed) {
                     Column {
                         Spacer(Modifier.height(12.dp))
                         CalendarLegend(isOnPill = isOnPill, pillPacks = pillPacks)
@@ -865,135 +1026,71 @@ fun CalendarCard(
 }
 
 @Composable
-fun DayCellEnhanced(
-    date: LocalDate,
-    isCurrentMonth: Boolean,
-    cycles: List<PeriodViewModel.Cycle>,
-    prediction: Prediction?,
-    isTransitioning: Boolean = false,
-    isLearningMode: Boolean = false,
-    isOnPill: Boolean = false,
-    pillPacks: List<PeriodViewModel.PillPack> = emptyList(),
+private fun DayCellEnhanced(
+    date: LocalDate, isCurrentMonth: Boolean, dayIndex: CalendarDayIndex,
+    isTransitioning: Boolean = false, isLearningMode: Boolean = false, isOnPill: Boolean = false,
     dailyLogs: Map<String, PeriodViewModel.DailyLog> = emptyMap(),
     onDayTapped: (PeriodViewModel.Cycle, LocalDate) -> Unit = { _, _ -> }
 ) {
-    val isDark = LocalAppIsDark.current
-    val isToday = date == LocalDate.now()
-    val today   = LocalDate.now()
-
-    val themeAccent      = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
-    val starAccent       = if (isDark) Color(0xFF8089D2) else Color(0xFF2C3F70)
-    val colorPeriodSolid = Color(0xFFA5231C)
-    val packColor        = Color(0xFFa68e74)
-    val colorOvulationBg = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.2f)
-    val ColorFertileSolid = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-
-
-    val matchingPack = pillPacks.firstOrNull { pack ->
-        val end = pack.endDate ?: pack.startDate.plusDays((pack.pillCount - 1).toLong())
-        !date.isBefore(pack.startDate) && !date.isAfter(end)
-    }
-    val isInPillWindow   = matchingPack != null
-    val isPillWindowPast = isInPillWindow && date.isBefore(today)
-    val isOvulationDay   = !isOnPill && prediction?.ovulationDay == date
-
-    fun checkPhase(d: LocalDate): Int {
-        val isLoggedPeriod = cycles.any { c ->
-            val start = c.startDate; val end = c.endDate ?: start.plusDays(6)
-            !d.isBefore(start) && !d.isAfter(end)
-        }
-        if (isLoggedPeriod) return 1
-        val inWindow = pillPacks.any { pack ->
-            val end = pack.endDate ?: pack.startDate.plusDays((pack.pillCount - 1).toLong())
-            !d.isBefore(pack.startDate) && !d.isAfter(end)
-        }
-        if (inWindow) return 5
-        if (pillPacks.isEmpty() && !isTransitioning && prediction != null) {
-            val s            = prediction.mostLikelyPeriodStart
-            val windowLength = prediction.periodLength?.toLong() ?: 5L
-            if (!d.isBefore(s) && d.isBefore(s.plusDays(windowLength))) return 2
-            if (!isOnPill && prediction.fertileWindow.start != LocalDate.MIN && prediction.fertileWindow.contains(d)) return 3
-        }
-        return 0
-    }
-
-    val currentPhase = checkPhase(date)
-    val owningCycle  = if (currentPhase == 1) {
-        cycles.firstOrNull { c -> val end = c.endDate ?: c.startDate.plusDays(6); !date.isBefore(c.startDate) && !date.isAfter(end) }
-    } else null
-    val hasOverride  = owningCycle != null && dailyLogs.containsKey("${owningCycle.id}|$date")
-
-    val prevPhase    = checkPhase(date.minusDays(1))
-    val nextPhase    = checkPhase(date.plusDays(1))
-    val isStart      = currentPhase != prevPhase
-    val isEnd        = currentPhase != nextPhase
-    val stripRadius  = 100.dp
-
+    val dark = LocalAppIsDark.current
+    val today = date == dayIndex.today
+    val accent = if (dark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
+    val star = if (dark) Color(0xFFD39AB2) else Color(0xFF613248)
+    val period = Color(0xFFA5231C)
+    val packColor = Color(0xFFA77C91)
+    val ovulation = if (dark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.2f)
+    val fertile = if (dark) Color(0xFF9B7890) else Color(0xFFC87898)
+    val pack = dayIndex.packs[date]
+    val packPast = pack != null && date.isBefore(dayIndex.today)
+    val phase = dayIndex.phases[date] ?: 0
+    val cycle = if (phase == 1) dayIndex.cycles[date] else null
+    val override = cycle != null && dailyLogs.containsKey("${cycle.id}|$date")
+    val start = phase != (dayIndex.phases[date.minusDays(1)] ?: 0)
+    val end = phase != (dayIndex.phases[date.plusDays(1)] ?: 0)
+    val radius = 100.dp
     val shape = when {
-        currentPhase == 0 -> CircleShape
-        isStart && isEnd  -> CircleShape
-        isStart           -> RoundedCornerShape(topStart = stripRadius, bottomStart = stripRadius)
-        isEnd             -> RoundedCornerShape(topEnd = stripRadius, bottomEnd = stripRadius)
-        else              -> RectangleShape
+        phase == 0 || (start && end) -> CircleShape
+        start -> RoundedCornerShape(topStart = radius, bottomStart = radius)
+        end -> RoundedCornerShape(topEnd = radius, bottomEnd = radius)
+        else -> RectangleShape
     }
-    val padding = when {
-        currentPhase == 0 -> PaddingValues(2.dp)
-        isStart && isEnd  -> PaddingValues(4.dp)
-        isStart           -> PaddingValues(start = 4.dp, top = 4.dp, bottom = 4.dp)
-        isEnd             -> PaddingValues(end = 4.dp, top = 4.dp, bottom = 4.dp)
-        else              -> PaddingValues(vertical = 4.dp)
+    val inset = when {
+        phase == 0 -> PaddingValues(2.dp)
+        start && end -> PaddingValues(4.dp)
+        start -> PaddingValues(start = 4.dp, top = 4.dp, bottom = 4.dp)
+        end -> PaddingValues(end = 4.dp, top = 4.dp, bottom = 4.dp)
+        else -> PaddingValues(vertical = 4.dp)
     }
-    val bgColor = when (currentPhase) {
-        1    -> colorPeriodSolid.copy(alpha = 0.6f)
-        2    -> colorPeriodSolid
-        3    -> ColorFertileSolid
-        5    -> if (isPillWindowPast) packColor.copy(alpha = 0.2f) else packColor
+    val bg = when (phase) {
+        1 -> period.copy(alpha = 0.6f)
+        2 -> period
+        3 -> fertile
+        5 -> if (packPast) packColor.copy(alpha = 0.2f) else packColor
         else -> Color.Transparent
     }
-    val isHighlighted = when (currentPhase) { 5 -> !isPillWindowPast; 0 -> false; else -> true }
-
+    val highlighted = when (phase) { 5 -> !packPast; 0 -> false; else -> true }
     Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .then(
-                if (owningCycle != null) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onDayTapped(owningCycle, date) }
-                else Modifier
-            ),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.aspectRatio(1f).then(
+            if (cycle != null) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                onDayTapped(cycle, date)
+            } else Modifier
+        ), contentAlignment = Alignment.Center
     ) {
-        Box(modifier = Modifier.fillMaxSize().padding(padding).clip(shape).background(bgColor))
-
-        if (isOvulationDay) {
-            Box(modifier = Modifier.size(35.dp).clip(CircleShape).background(colorOvulationBg))
-        }
-
-        DayText(date, isCurrentMonth, isHighlighted = isHighlighted)
-
-        if (hasOverride) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 10.dp)
-                    .size(4.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.85f))
+        Box(Modifier.fillMaxSize().padding(inset).clip(shape).background(bg))
+        if (!isOnPill && dayIndex.ovulationDay == date) Box(Modifier.size(35.dp).clip(CircleShape).background(ovulation))
+        DayText(date, isCurrentMonth, isHighlighted = highlighted)
+        if (override) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp).size(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.85f)))
+        if (today) Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                color = when {
+                    phase != 0 -> Color.White
+                    isTransitioning || isLearningMode -> star
+                    pack != null -> accent
+                    dark -> Color.White
+                    else -> Color.Black
+                },
+                radius = size.minDimension / 2.6f, style = Stroke(width = 2.dp.toPx())
             )
-        }
-
-        if (isToday) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    color  = when {
-                        currentPhase != 0               -> Color.White
-                        isTransitioning || isLearningMode -> starAccent
-                        pillPacks.isNotEmpty()           -> themeAccent
-                        isDark                           -> Color.White
-                        else                             -> Color.Black
-                    },
-                    radius = size.minDimension / 2.6f,
-                    style  = Stroke(width = 2.dp.toPx())
-                )
-            }
         }
     }
 }
@@ -1144,16 +1241,17 @@ fun EditCycleDialog(
     }
 
     val isDark = LocalAppIsDark.current
-    val containerColor  = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val accentColor     = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
-    val surfaceFallback = if (isDark) Color.Black else Color.Black.copy(alpha = 0.05f)
-    val pastelGreen     = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-    val pastelOrange    = Color(0xFFD89046)
-    val pastelMaroon    = Color(0xFF4E1A1A)
-    val pillBackground  = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-    val pillTextColor   = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textPrimary     = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1B1B1B)
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surface
+    val accentColor = scheme.primary
+    val surfaceFallback = scheme.surfaceVariant
+    val pastelGreen = scheme.primaryContainer
+    val pastelOrange = scheme.tertiaryContainer
+    val pastelMaroon = scheme.errorContainer
+    val pillBackground = scheme.surfaceVariant
+    val pillTextColor = scheme.onSurface
+    val textPrimary = scheme.onSurface
+    val textSub = scheme.onSurfaceVariant
 
     val formatter  = remember { DateTimeFormatter.ofPattern("MMM dd") }
 
@@ -1275,7 +1373,15 @@ fun EditCycleDialog(
                             bleedingOptions.forEach { option ->
                                 val isSelected = bleeding.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Heavy" -> pastelMaroon; "Medium" -> pastelOrange; else -> pastelGreen }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bleeding = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Heavy" -> scheme.onErrorContainer
+                                        "Medium" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bleeding = option }
                             }
                         }
                     }
@@ -1286,7 +1392,15 @@ fun EditCycleDialog(
                             colorOptions.forEach { option ->
                                 val isSelected = bloodColor.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Bright Red" -> pastelGreen; "Dark Red" -> Color(0xFF4E1A1A); "Brown" -> pastelOrange; else -> accentColor }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bloodColor = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Dark Red" -> Color.White
+                                        "Brown" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bloodColor = option }
                             }
                         }
                     }
@@ -1400,7 +1514,7 @@ fun EntryStylePill(
     inactiveText: Color, surface: Color, onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (isSelected) activeBg else surface).clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 8.dp),
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (isSelected) activeBg else surface).selectable(selected = isSelected, onClick = onClick, role = Role.RadioButton).padding(horizontal = 18.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -1451,11 +1565,11 @@ fun EntryRow(
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "arrowRotation")
 
     val isDark             = LocalAppIsDark.current
-    val cardBackground     = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
-    val pillBackground     = if (isDark) Color(0xFFE8EBED).copy(alpha = 0.1f) else Color(0xFFE8EBED).copy(alpha = 0.4f)
-    val primaryTextColor   = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val secondaryTextColor = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val pillTextColor      = if (isDark) Color.White else Color(0xFF1B1B1B)
+    val cardBackground     = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
+    val pillBackground     = if (isDark) Color(0xFFF4DFE7).copy(alpha = 0.1f) else Color(0xFFF4DFE7).copy(alpha = 0.4f)
+    val primaryTextColor   = if (isDark) Color.White else Color(0xFF2A1C26)
+    val secondaryTextColor = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
+    val pillTextColor      = if (isDark) Color.White else Color(0xFF2A1C26)
 
     val capitalizedBleeding = remember(bleeding) {
         bleeding.lowercase(Locale.getDefault()).replaceFirstChar { it.titlecase(Locale.getDefault()) }
@@ -1576,14 +1690,14 @@ private val pillFlowMessages    = listOf("Stay consistent with your pack! 💊",
 fun PredictionBanner(
     prediction: Prediction?, cycles: List<PeriodViewModel.Cycle>,
     isTransitioning: Boolean, isOnPill: Boolean, pillStopDate: LocalDate?,
-    pillPackStartDate: LocalDate? = null, pillPackCount: Int = 21
+    pillStartDate: LocalDate? = null, pillPackCount: Int = 21
 ) {
     val today = LocalDate.now()
     val now   = LocalDateTime.now()
     val isDark = LocalAppIsDark.current
 
-    val packEndDate = remember(pillPackStartDate, pillPackCount) {
-        pillPackStartDate?.plusDays((pillPackCount - 1).toLong())
+    val packEndDate = remember(pillStartDate, pillPackCount) {
+        pillStartDate?.plusDays((pillPackCount - 1).toLong())
     }
     val endFormatter = remember { DateTimeFormatter.ofPattern("MMM dd") }
     val postPillCycles = remember(cycles, pillStopDate) {
@@ -1596,14 +1710,14 @@ fun PredictionBanner(
 
     if (prediction == null && postPillState == PostPillState.NORMAL && activeCycle == null) return
 
-    val cardBackground = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
-    val textPrimary    = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSecondary  = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
+    val cardBackground = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
+    val textPrimary    = if (isDark) Color.White else Color(0xFF321B28)
+    val textSecondary  = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
     val pillBackground = remember(isDark, isOnPill) {
-        when { isOnPill && isDark -> Color(0xFFa68e74).copy(alpha = 0.15f); isOnPill -> Color(0xFFa68e74).copy(alpha = 0.10f); isDark -> Color(0xFFD89046).copy(alpha = 0.15f); else -> Color(0xFFa5bda3).copy(alpha = 0.15f) }
+        when { isOnPill && isDark -> Color(0xFFA77C91).copy(alpha = 0.15f); isOnPill -> Color(0xFFA77C91).copy(alpha = 0.10f); isDark -> Color(0xFFD89046).copy(alpha = 0.15f); else -> Color(0xFFC87898).copy(alpha = 0.15f) }
     }
     val progressBrush  = remember(isDark, isOnPill) {
-        val color = when { isOnPill -> Color(0xFFa68e74); isDark -> Color(0xFFD89046); else -> Color(0xFFa5bda3) }
+        val color = when { isOnPill -> Color(0xFFA77C91); isDark -> Color(0xFFD89046); else -> Color(0xFFC87898) }
         Brush.linearGradient(colors = listOf(color, color))
     }
 
@@ -1613,10 +1727,10 @@ fun PredictionBanner(
 
     if (activeCycle != null) {
         val dayOfPeriod  = ChronoUnit.DAYS.between(activeCycle.startDate, today).toInt() + 1
-        val pillDayIndex = if (pillPackStartDate != null) (today.toEpochDay() - pillPackStartDate.toEpochDay()).toInt().coerceAtLeast(0) else today.toEpochDay().toInt()
+        val pillDayIndex = if (pillStartDate != null) (today.toEpochDay() - pillStartDate.toEpochDay()).toInt().coerceAtLeast(0) else today.toEpochDay().toInt()
         val label        = if (isOnPill) "Withdrawal Bleed" else "Period"
         icon             = Icons.Rounded.Favorite
-        accentColor      = if (isOnPill) Color(0xFFa68e74) else Color(0xFFEF5350)
+        accentColor      = if (isOnPill) Color(0xFFA77C91) else Color(0xFFEF5350)
         statusTitle      = "$label Day $dayOfPeriod"
         personalMessage  = when (postPillState) {
             PostPillState.DISCOVERY -> "First cycle after stopping pills — recalibrating. 🌿"
@@ -1627,14 +1741,14 @@ fun PredictionBanner(
         val totalDays    = activeCycle.endDate?.let { ChronoUnit.DAYS.between(activeCycle.startDate, it) + 1 } ?: 6L
         progTarget       = (ChronoUnit.MINUTES.between(activeCycle.startDate.atStartOfDay(), now).toFloat() / (totalDays * 1440f)).coerceIn(0f, 0.95f)
     } else if (postPillState == PostPillState.DISCOVERY) {
-        icon = Icons.Rounded.AutoAwesome; accentColor = if (isDark) Color(0xFF8089D2) else Color(0xFF2C3F70)
+        icon = Icons.Rounded.AutoAwesome; accentColor = if (isDark) Color(0xFFD39AB2) else Color(0xFF613248)
         statusTitle = "Discovery Mode"; personalMessage = "Predictions are paused while recalibrating."; dateBadgeText = "Paused"
     } else if (postPillState == PostPillState.LEARNING) {
-        icon = Icons.Rounded.AutoAwesome; accentColor = if (isDark) Color(0xFF8089D2) else Color(0xFF2C3F70)
+        icon = Icons.Rounded.AutoAwesome; accentColor = if (isDark) Color(0xFFD39AB2) else Color(0xFF613248)
         statusTitle = "Learning Mode"; personalMessage = "Predictions are active, but we're still refining accuracy."
         dateBadgeText = prediction?.mostLikelyPeriodStart?.pretty() ?: "Learning"
     } else if (prediction == null) {
-        icon = Icons.Rounded.AutoAwesome; accentColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+        icon = Icons.Rounded.AutoAwesome; accentColor = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
         statusTitle = "Learning your rhythm"; personalMessage = "Keep tracking to unlock predictions."; dateBadgeText = "Learning"
     } else {
         val daysUntil      = ChronoUnit.DAYS.between(today, prediction.mostLikelyPeriodStart)
@@ -1644,11 +1758,11 @@ fun PredictionBanner(
         } else null
         val quad = when {
             daysUntil < 0   -> Quadruple(Icons.Rounded.Warning,   Color(0xFFEF5350), "Late by ${abs(daysUntil)} days", "No stress — cycles can shift! 🧘‍♀️")
-            daysUntil == 0L -> Quadruple(Icons.Rounded.Favorite,  if (isOnPill) Color(0xFFa68e74) else if (isDark) Color(0xFFC8D4E5) else Color(0xFF8089D2), "Starts today", if (isOnPill) "Withdrawal bleed expected today." else "Ready for your period? 🍫")
+            daysUntil == 0L -> Quadruple(Icons.Rounded.Favorite,  if (isOnPill) Color(0xFFA77C91) else if (isDark) Color(0xFFC8D4E5) else Color(0xFFD39AB2), "Starts today", if (isOnPill) "Withdrawal bleed expected today." else "Ready for your period? 🍫")
             daysUntil <= 3  -> Quadruple(Icons.Rounded.Bolt,      Color(0xFFFFB74D), "Almost time", "Rest up and stay cozy. 💧")
             else            -> {
                 val message = if (packInfo != null) "$packInfo • ${pillFlowMessages[today.dayOfYear % pillFlowMessages.size]}" else naturalFlowMessages[today.dayOfYear % naturalFlowMessages.size]
-                Quadruple(Icons.Rounded.Spa, if (isOnPill) Color(0xFFa68e74) else if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3), "$daysUntil days until next $cycleTypeLabel", message)
+                Quadruple(Icons.Rounded.Spa, if (isOnPill) Color(0xFFA77C91) else if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F), "$daysUntil days until next $cycleTypeLabel", message)
             }
         }
         icon = quad.first; accentColor = quad.second; statusTitle = quad.third; personalMessage = quad.fourth
@@ -1741,9 +1855,9 @@ fun WellnessCardsRow(cycles: List<PeriodViewModel.Cycle>, prediction: Prediction
     }
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        WellnessCardItem(title = "Do",   content = doList[cardIndex % doList.size],     icon = doIcon,   backgroundColor = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3), modifier = Modifier.weight(1f))
+        WellnessCardItem(title = "Do",   content = doList[cardIndex % doList.size],     icon = doIcon,   backgroundColor = if (isDark) Color(0xFF482538) else Color(0xFFC87898), modifier = Modifier.weight(1f))
         WellnessCardItem(title = "Move", content = moveList[cardIndex % moveList.size], icon = moveIcon, backgroundColor = Color(0xFFD89046),                    modifier = Modifier.weight(1f))
-        WellnessCardItem(title = "Eat",  content = eatList[cardIndex % eatList.size],   icon = eatIcon,  backgroundColor = Color(0xFFa68e74),                    modifier = Modifier.weight(1f))
+        WellnessCardItem(title = "Eat",  content = eatList[cardIndex % eatList.size],   icon = eatIcon,  backgroundColor = Color(0xFFA77C91),                    modifier = Modifier.weight(1f))
     }
 }
 

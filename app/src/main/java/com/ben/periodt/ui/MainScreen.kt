@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +45,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ben.periodt.ui.theme.PeriodTTheme
 import com.ben.periodt.ui.theme.LocalAppIsDark
 import com.ben.periodt.ui.theme.SetSystemBars
 import com.ben.periodt.ui.calendar.AddCycleDialog
@@ -62,10 +65,6 @@ import com.ben.periodt.ui.profiles.ProfileBottomSheetContent
 import com.ben.periodt.ui.profiles.ProfileEditorDialog
 import com.ben.periodt.viewmodel.PeriodViewModel
 import com.ben.periodt.widget.CalendarWidget
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -96,67 +95,48 @@ val LocalAppDimens = staticCompositionLocalOf { StandardDimensions }
 val LAST_SEEN_VERSION_KEY = intPreferencesKey("last_seen_version")
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Calendar : Screen("calendar", "Calendar", Icons.Rounded.CalendarMonth)
+    object Calendar : Screen("calendar", "Cycle", Icons.Rounded.CalendarMonth)
     object Pill     : Screen("pill",     "Pills",    Icons.Default.Medication)
-    object Overview : Screen("overview", "Overview", Icons.Rounded.SpaceDashboard)
+    object Overview : Screen("overview", "Insights", Icons.Rounded.SpaceDashboard)
     object Settings : Screen("settings", "Settings", Icons.Rounded.Settings)
 }
 
 @Composable
 fun SmoothBottomNavigation(
-    screens: List<Screen>,
-    currentRoute: String?,
-    onNavigate: (String) -> Unit,
-    hazeState: HazeState,
-    activeProfile: PeriodViewModel.Profile?,
-    onProfileClick: () -> Unit,
-    modifier: Modifier = Modifier
+    screens: List<Screen>, currentRoute: String?, onNavigate: (String) -> Unit,
+    activeProfile: PeriodViewModel.Profile?, onProfileClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     val dimens = LocalAppDimens.current
-    val isDark = LocalAppIsDark.current
-    val navBarBg = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-
-    Box(
-        modifier = modifier
-            .wrapContentWidth()
-            .height(dimens.barHeight)
-            .shadow(14.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.6f), spotColor = Color.Black.copy(alpha = 0.6f))
-            .clip(CircleShape)
-            .background(navBarBg)
+    val scheme = MaterialTheme.colorScheme
+    // Compact the whole dock before it approaches the edges on narrow phones.
+    val compact = LocalConfiguration.current.screenWidthDp < 430
+    val itemWidth = if (compact) 60.dp else 72.dp
+    val avatarWidth = if (compact) 44.dp else 48.dp
+    Row(
+        modifier = modifier.wrapContentWidth().height(dimens.barHeight)
+            .shadow(5.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.10f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .clip(CircleShape).background(scheme.surface).border(1.dp, scheme.outline.copy(alpha = 0.35f), CircleShape).padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(modifier = Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
-            screens.forEach { screen ->
-                val isSelected = screen.route == currentRoute
-                val contentColor by animateColorAsState(
-                    targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.4f),
-                    animationSpec = tween(400), label = "contentColor"
-                )
-
-                Box(
-                    modifier = Modifier.width(dimens.barHeight).fillMaxHeight().clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null, onClick = { onNavigate(screen.route) }
-                    ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(imageVector = screen.icon, contentDescription = screen.label, tint = contentColor, modifier = Modifier.size(dimens.iconSize))
-                }
-            }
-
-            Box(
-                modifier = Modifier.width(dimens.barHeight).fillMaxHeight().clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null, onClick = onProfileClick
-                ),
-                contentAlignment = Alignment.Center
+        screens.forEach { screen ->
+            val selected = screen.route == currentRoute
+            val itemBg by animateColorAsState(if (selected) scheme.primaryContainer else Color.Transparent, tween(180), label = "navigationItemBackground")
+            val tint by animateColorAsState(if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant, tween(180), label = "navigationItemTint")
+            Column(
+                modifier = Modifier.width(itemWidth).fillMaxHeight().clip(RoundedCornerShape(24.dp)).background(itemBg)
+                    .selectable(selected = selected, onClick = { onNavigate(screen.route) }, role = Role.Tab).padding(horizontal = 2.dp, vertical = 5.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
             ) {
-                AvatarDisplay(
-                    avatarString = activeProfile?.avatarColor ?: "avatar_1",
-                    name = activeProfile?.name ?: "Me",
-                    modifier = Modifier.size(dimens.avatarSize),
-                    fontSize = if (dimens == CompactDimensions) 14.sp else 15.sp
-                )
+                Icon(screen.icon, contentDescription = screen.label, tint = tint, modifier = Modifier.size(if (selected) 21.dp else 19.dp))
+                Spacer(Modifier.height(2.dp))
+                Text(screen.label, color = tint, style = MaterialTheme.typography.labelSmall,
+                    fontSize = if (compact) 10.sp else 11.sp, maxLines = 1,
+                    fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Medium)
             }
+        }
+        Box(Modifier.width(avatarWidth).fillMaxHeight().clip(CircleShape).clickable(onClick = onProfileClick), contentAlignment = Alignment.Center) {
+            AvatarDisplay(activeProfile?.avatarColor ?: "avatar_1", activeProfile?.name ?: "Me",
+                modifier = Modifier.size(dimens.avatarSize), fontSize = if (compact) 12.sp else 13.sp)
         }
     }
 }
@@ -182,11 +162,13 @@ fun MainScreen() {
         CalendarWidget.refreshAll(context)
     }
 
-    CompositionLocalProvider(
-        LocalAppIsDark provides isDark,
-        LocalAppDimens provides dimensions
-    ) {
-        MainScreenContent(isDark = isDark)
+    PeriodTTheme(darkTheme = isDark) {
+        CompositionLocalProvider(
+            LocalAppIsDark provides isDark,
+            LocalAppDimens provides dimensions
+        ) {
+            MainScreenContent(isDark = isDark)
+        }
     }
 }
 
@@ -249,21 +231,6 @@ private fun MainScreenContent(isDark: Boolean) {
         }
     }
 
-    val fadeColor = if (isDark) Color.Black else Color.White
-    val bottomFadeBrush = Brush.verticalGradient(listOf(fadeColor.copy(alpha = 0f), fadeColor.copy(alpha = 0f), fadeColor.copy(alpha = 0.8f), fadeColor))
-
-    val bgGradient = if (isDark) {
-        Brush.linearGradient(
-            0.0f to Color.Black, 0.7f to Color.Black, 1.0f to Color.Black,
-            start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    } else {
-        Brush.linearGradient(
-            colors = listOf(Color(0xFFe8ebed), Color(0xFFf2f0e3)),
-            start  = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    }
-
     val navController = rememberNavController()
     val viewModel: PeriodViewModel = viewModel(factory = PeriodViewModel.Factory(context.applicationContext as Application))
     val screens = listOf(Screen.Calendar, Screen.Pill, Screen.Overview)
@@ -281,16 +248,14 @@ private fun MainScreenContent(isDark: Boolean) {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val hazeState = remember { HazeState() }
-
-    Box(modifier = Modifier.fillMaxSize().background(bgGradient)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         NavHost(
             navController = navController,
             startDestination = Screen.Calendar.route,
-            modifier = Modifier.fillMaxSize().haze(state = hazeState).windowInsetsPadding(WindowInsets.statusBars)
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)
         ) {
-            composable(Screen.Calendar.route) { CalendarScreen(viewModel) }
-            composable(Screen.Pill.route) { PillTrackerScreen(viewModel) }
+            composable(Screen.Calendar.route) { CalendarScreen(viewModel, onAddCycleClick = { showAddCycleDialog = true }) }
+            composable(Screen.Pill.route) { PillTrackerScreen(viewModel, onSetupClick = { showAddPillDialog = true }) }
             composable(Screen.Overview.route) { OverviewScreen(viewModel) }
             composable(
                 route = Screen.Settings.route,
@@ -310,32 +275,49 @@ private fun MainScreenContent(isDark: Boolean) {
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(dimens.barHeight)
-                            .shadow(14.dp, RoundedCornerShape(percent = 49), ambientColor = Color.Black.copy(alpha = 0.6f), spotColor = Color.Black.copy(alpha = 0.6f))
-                            .clip(CircleShape)
-                            .background(if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3))
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                    val actionLabel = when (currentRoute) {
+                        Screen.Pill.route -> "Set up"
+                        Screen.Overview.route -> "Reminders"
+                        else -> "Add period"
+                    }
+                    val actionWidth = if (configuration.screenWidthDp >= 430) {
+                        when (currentRoute) {
+                            Screen.Overview.route -> 112.dp
+                            Screen.Pill.route -> 92.dp
+                            else -> 108.dp
+                        }
+                    } else dimens.barHeight
+                    Row(
+                        modifier = Modifier.width(actionWidth).height(dimens.barHeight)
+                            .shadow(5.dp, RoundedCornerShape(percent = 50), ambientColor = Color.Black.copy(alpha = 0.10f), spotColor = Color.Black.copy(alpha = 0.12f))
+                            .clip(RoundedCornerShape(percent = 50)).background(MaterialTheme.colorScheme.primary)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = androidx.compose.foundation.LocalIndication.current,
+                                onClickLabel = actionLabel,
+                                role = Role.Button
+                            ) {
                                 when (currentRoute) {
                                     Screen.Pill.route -> showAddPillDialog = true
                                     Screen.Overview.route -> showRemindersSheet = true
                                     else -> showAddCycleDialog = true
                                 }
-                            },
-                        contentAlignment = Alignment.Center
+                            }.padding(horizontal = if (actionWidth == dimens.barHeight) 0.dp else 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = if (actionWidth == dimens.barHeight) Arrangement.Center else Arrangement.spacedBy(6.dp)
                     ) {
                         AnimatedContent(targetState = currentRoute, label = "FABIconTransition") { route ->
                             when (route) {
-                                Screen.Pill.route -> CapsuleIcon(color = Color.White)
-                                Screen.Overview.route -> Icon(imageVector = Icons.Rounded.Notifications, contentDescription = "Reminders", tint = Color.White, modifier = Modifier.size(dimens.iconSize))
-                                else -> ClickyAddIcon(tint = Color.White)
+                                Screen.Pill.route -> CapsuleIcon(color = MaterialTheme.colorScheme.onPrimary)
+                                Screen.Overview.route -> Icon(Icons.Rounded.Notifications, contentDescription = "Reminders", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(dimens.iconSize))
+                                else -> ClickyAddIcon(tint = MaterialTheme.colorScheme.onPrimary)
                             }
                         }
+                        if (actionWidth != dimens.barHeight) Text(actionLabel, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge, fontSize = 12.sp, maxLines = 1)
                     }
 
                     SmoothBottomNavigation(
-                        screens = screens, currentRoute = currentRoute, hazeState = hazeState,
+                        screens = screens, currentRoute = currentRoute,
                         activeProfile = activeProfile, onProfileClick = { showProfileSheet = true },
                         onNavigate = { route ->
                             navController.navigate(route) {
@@ -353,7 +335,7 @@ private fun MainScreenContent(isDark: Boolean) {
             ModalBottomSheet(
                 onDismissRequest = { showProfileSheet = false },
                 sheetState = profileSheetState,
-                containerColor = if (isDark) Color(0xFF1b1b1b) else Color.White,
+                containerColor = if (isDark) Color(0xFF2A1C26) else Color(0xFFFFFCFA),
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
             ) {
                 ProfileBottomSheetContent(

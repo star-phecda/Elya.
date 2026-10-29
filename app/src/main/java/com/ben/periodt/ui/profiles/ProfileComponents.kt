@@ -60,6 +60,7 @@ import coil.compose.AsyncImage
 import com.ben.periodt.R
 import com.ben.periodt.ui.theme.BricolageGrotesque
 import com.ben.periodt.ui.theme.LocalAppIsDark
+import com.ben.periodt.ui.shared.ElyaIdentity
 import com.ben.periodt.viewmodel.PeriodViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -93,7 +94,7 @@ fun AvatarDisplay(
     if (avatarString.startsWith("#")) {
         val pColor = remember(avatarString) {
             try { Color(android.graphics.Color.parseColor(avatarString)) }
-            catch (e: Exception) { Color(0xFFD89046) }
+            catch (e: Exception) { Color(0xFF8F405F) }
         }
         Box(
             modifier = modifier.clip(CircleShape).background(pColor),
@@ -118,7 +119,7 @@ fun AvatarDisplay(
             )
         } else {
             Box(
-                modifier = modifier.clip(CircleShape).background(Color(0xFFD89046)),
+                modifier = modifier.clip(CircleShape).background(Color(0xFF8F405F)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -318,7 +319,7 @@ private fun ProfileRow(
     onSwitch: (Int) -> Unit,
     onEdit: (PeriodViewModel.Profile) -> Unit
 ) {
-    val sheetBg = if (isDark) Color(0xFF1B1B1B) else Color.White
+    val sheetBg = MaterialTheme.colorScheme.surface
     val targetBg = if (isSelected) lerp(sheetBg, highlightColor, 0.15f) else rowBg
     val animatedBg by animateColorAsState(targetValue = targetBg, animationSpec = tween(300), label = "rowBgAnim")
 
@@ -395,10 +396,10 @@ fun ProfileEditorDialog(
         }
     }
 
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -500,14 +501,14 @@ fun ProfileEditorDialog(
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
-                                        text = "developer.ben10@gmail.com",
+                                        text = ElyaIdentity.CONTACT_EMAIL,
                                         fontFamily = BricolageGrotesque,
                                         fontSize = SIZE_MD,
                                         color = accentColor,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.clickable {
                                             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                                data = Uri.parse("mailto:developer.ben10@gmail.com")
+                                                data = Uri.parse("mailto:${ElyaIdentity.CONTACT_EMAIL}")
                                             }
                                             try { context.startActivity(intent) } catch (e: Exception) { }
                                         }
@@ -552,9 +553,9 @@ fun ProfileBottomSheetContent(
     onSettingsClick: () -> Unit,
     listState: LazyListState = rememberLazyListState()
 ) {
-    val textPrimary = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
     val rowBg = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     Column(
@@ -650,10 +651,10 @@ fun LegacyImportDialog(
     onDismiss: () -> Unit
 ) {
     val isDark = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
     val rowBg = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     val configuration = LocalConfiguration.current

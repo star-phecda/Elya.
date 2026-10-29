@@ -1,8 +1,8 @@
-# Privacy Policy — Periodt
+# Privacy Policy — Elya
 
-Last updated: 24 September 2025
+Last updated: 29 October 2026
 
-Periodt is a privacy‑first Android app that works entirely on the device. This policy explains what information is processed, how it is stored, and what choices are available.
+Elya is a privacy-first Android community fork of Periodt that works entirely on the device. This policy explains what information is processed, how it is stored, and what choices are available.
 
 ## Summary
 - No account or cloud services. All data stays on the device.
@@ -30,10 +30,10 @@ Periodt is a privacy‑first Android app that works entirely on the device. This
 - If a “Reset/Delete data” option is provided in‑app, using it erases locally stored entries and settings.
 
 ## Children’s Privacy
-- Periodt is intended for a general audience. If a parent or guardian wishes to remove information entered on a child’s device, uninstalling the app will delete local data on that device.
+- Elya is intended for a general audience. If a parent or guardian wishes to remove information entered on a child’s device, uninstalling the app will delete local data on that device.
 
 ## Changes to This Policy
 - The “Last updated” date will change when this policy is revised. Material updates will be reflected in the repository and, where appropriate, highlighted in the app.
 
 ## Contact
-For questions or privacy requests, contact: developer.ben10@gmail.com
+For questions or privacy requests, contact: dawnphecda@gmail.com

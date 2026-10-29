@@ -161,16 +161,17 @@ fun AddCycleDialog(
     }
 
     val isDark = LocalAppIsDark.current
-    val containerColor  = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val accentColor     = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
-    val surfaceFallback = if (isDark) Color.Black else Color.Black.copy(alpha = 0.05f)
-    val pastelGreen     = if (isDark) Color(0xFF42553f) else Color(0xFFa5bda3)
-    val pastelOrange    = Color(0xFFD89046)
-    val pastelMaroon    = Color(0xFF4E1A1A)
-    val pillBackground  = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-    val pillTextColor   = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textPrimary     = if (isDark) Color.White else Color(0xFF0F172A)
-    val textSub         = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1B1B1B)
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surface
+    val accentColor = scheme.primary
+    val surfaceFallback = scheme.surfaceVariant
+    val pastelGreen = scheme.primaryContainer
+    val pastelOrange = scheme.tertiaryContainer
+    val pastelMaroon = scheme.errorContainer
+    val pillBackground = scheme.surfaceVariant
+    val pillTextColor = scheme.onSurface
+    val textPrimary = scheme.onSurface
+    val textSub = scheme.onSurfaceVariant
 
     val formatter  = remember { DateTimeFormatter.ofPattern("MMM dd") }
 
@@ -293,7 +294,15 @@ fun AddCycleDialog(
                             bleedingOptions.forEach { option ->
                                 val isSelected = bleeding.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Heavy" -> pastelMaroon; "Medium" -> pastelOrange; else -> pastelGreen }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bleeding = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Heavy" -> scheme.onErrorContainer
+                                        "Medium" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bleeding = option }
                             }
                         }
                     }
@@ -304,7 +313,15 @@ fun AddCycleDialog(
                             colorOptions.forEach { option ->
                                 val isSelected = bloodColor.equals(option, ignoreCase = true)
                                 val activeBg   = when (option) { "Bright Red" -> pastelGreen; "Dark Red" -> Color(0xFF4E1A1A); "Brown" -> pastelOrange; else -> accentColor }
-                                EntryStylePill(option, isSelected, activeBg, Color.White, textSub, surfaceFallback) { bloodColor = option }
+                                EntryStylePill(
+                                    option, isSelected, activeBg,
+                                    when (option) {
+                                        "Dark Red" -> Color.White
+                                        "Brown" -> scheme.onTertiaryContainer
+                                        else -> scheme.onPrimaryContainer
+                                    },
+                                    textSub, surfaceFallback
+                                ) { bloodColor = option }
                             }
                         }
                     }
@@ -444,10 +461,10 @@ fun MinimalDatePickerDialog(
     }
     var isDateError by remember { mutableStateOf(false) }
 
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary    = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor    = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = if (isDark) Color(0xFF2A1C26) else Color.White
+    val textPrimary    = if (isDark) Color.White else Color(0xFF2A1C26)
+    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
+    val accentColor    = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
 
     
     val configuration = LocalConfiguration.current
@@ -587,7 +604,7 @@ fun MinimalMonthPicker(
     val selectedDate = selectedMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
 
     
-    val backgroundBrush = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
+    val backgroundBrush = if (isDark) Color(0xFF2A1C26).copy(alpha = 0.5f) else Color.White
     val onCardContent = textColor
     val onCardContentMuted = onCardContent.copy(alpha = 0.70f)
 

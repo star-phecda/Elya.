@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,8 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.ben.periodt.R
 import com.ben.periodt.ui.theme.BricolageGrotesque
 import com.ben.periodt.ui.theme.LocalAppIsDark
+import com.ben.periodt.ui.shared.ElyaIdentity
 import com.ben.periodt.ui.profiles.LegacyImportDialog
 import com.ben.periodt.reminder.dataStore
 import com.ben.periodt.viewmodel.PeriodViewModel
@@ -63,7 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.material3.SheetState
 
-const val GITHUB_REPO_URL = "https://github.com/benny10ben/Periodt/"
+const val GITHUB_REPO_URL = "https://github.com/star-phecda/Elya./"
 
 private val SIZE_XS = 12.sp
 private val SIZE_SM = 13.sp
@@ -144,24 +148,12 @@ fun SettingsScreen(
     }
 
     val isDark = LocalAppIsDark.current
-    val bgGradient = if (isDark) {
-        Brush.linearGradient(
-            0.0f to Color.Black, 0.7f to Color.Black, 1.0f to Color.Black,
-            start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    } else {
-        Brush.linearGradient(
-            colors = listOf(Color(0xFFe8ebed), Color(0xFFf2f0e3)),
-            start  = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    }
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSub = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
 
-    val surfaceColor = if (isDark) Color(0xFF1B1B1B).copy(alpha = 0.5f) else Color.White
-    val textPrimary  = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub      = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor  = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
-
-    Box(modifier = Modifier.fillMaxSize().background(bgGradient)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -215,7 +207,7 @@ fun SettingsScreen(
                         text = "Predictions are for informational purposes only and are not medical advice.",
                         fontFamily = BricolageGrotesque,
                         fontSize = SIZE_SM,
-                        color = if (isDark) accentColor else Color(0xFF435C3C),
+                        color = if (isDark) accentColor else Color(0xFF8F405F),
                         lineHeight = 18.sp,
                         modifier = Modifier.weight(1f)
                     )
@@ -288,8 +280,18 @@ fun SettingsScreen(
                         subtitle = "Report issues on GitHub",
                         tint = textPrimary,
                         onClick = {
-                            try { uriHandler.openUri("https://github.com/benny10ben/Periodt/issues") }
+                            try { uriHandler.openUri(GITHUB_REPO_URL + "issues") }
                             catch (e: Exception) { Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show() }
+                        }
+                    )
+                    SettingsItem(
+                        icon = Icons.Rounded.Email,
+                        title = "Contact developer",
+                        subtitle = ElyaIdentity.CONTACT_EMAIL,
+                        tint = textPrimary,
+                        onClick = {
+                            try { uriHandler.openUri("mailto:${ElyaIdentity.CONTACT_EMAIL}") }
+                            catch (e: Exception) { Toast.makeText(context, "Could not open email app", Toast.LENGTH_SHORT).show() }
                         }
                     )
                     SettingsItem(icon = Icons.Rounded.NewReleases, title = "What's new", tint = textPrimary, onClick = { showWhatsNew = true })
@@ -299,13 +301,13 @@ fun SettingsScreen(
 
                 // 4. MORE
                 SettingsSection(title = "More", surfaceColor) {
-                    SettingsItem(icon = Icons.Rounded.Info, title = "About Periodt", subtitle = "v1.2.2", tint = textPrimary, onClick = { showAbout = true })
+                    SettingsItem(icon = Icons.Rounded.Info, title = "About Elya", subtitle = "v1.2.3", tint = textPrimary, onClick = { showAbout = true })
                     SettingsItem(icon = Icons.Rounded.PrivacyTip, title = "Privacy Policy", tint = textPrimary, onClick = { showPrivacy = true })
                 }
 
                 Spacer(Modifier.height(32.dp))
                 Text(
-                    text = "Dedicated to my love ❤️",
+                    text = ElyaIdentity.SETTINGS_DEDICATION,
                     fontFamily = BricolageGrotesque,
                     fontSize = SIZE_SM,
                     color = textPrimary.copy(alpha = 0.5f),
@@ -336,8 +338,8 @@ fun SettingsScreen(
     if (showWidgetInfo) {
         ContentDialog(title = "Home Screen Widgets", onDismiss = { showWidgetInfo = false }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("To add the Periodt widget to your home screen:", fontFamily = BricolageGrotesque, color = textPrimary, fontWeight = FontWeight.Bold, fontSize = SIZE_LG)
-                val instructions = listOf("Long-press an empty space on your home screen.", "Tap the 'Widgets' button in the menu.", "Scroll down to find 'Periodt'.", "Drag the widget to your desired position.")
+                Text("To add the Elya widget to your home screen:", fontFamily = BricolageGrotesque, color = textPrimary, fontWeight = FontWeight.Bold, fontSize = SIZE_LG)
+                val instructions = listOf("Long-press an empty space on your home screen.", "Tap the 'Widgets' button in the menu.", "Scroll down to find 'Elya'.", "Drag the widget to your desired position.")
                 instructions.forEachIndexed { i, text -> Text("${i + 1}. $text", fontFamily = BricolageGrotesque, color = textSub, fontSize = SIZE_MD) }
             }
         }
@@ -346,7 +348,7 @@ fun SettingsScreen(
     if (showAlgorithm) {
         ContentDialog(title = "How we calculate", onDismiss = { showAlgorithm = false }) {
             Text(
-                text = "Periodt uses a dynamic prediction algorithm that adapts to your unique cycle over time.\n\n" +
+                text = "Elya uses a dynamic prediction algorithm that adapts to your unique cycle over time.\n\n" +
                         "1. Smart outlier filtering\nUnusually long gaps are detected and excluded to avoid skewing predictions.\n\n" +
                         "2. Trend-aware cycle length\nWe run a weighted linear regression across your last 6 cycles to detect if your rhythm is shifting.\n\n" +
                         "3. Regularity scoring\nWe calculate the standard deviation to classify your regularity, which narrows or widens your prediction window.\n\n" +
@@ -360,7 +362,7 @@ fun SettingsScreen(
     if (showFaq) {
         ContentDialog(title = "FAQ", onDismiss = { showFaq = false }) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                FaqItem("Is my data secure?", "Yes. Periodt is offline-first. Your data never leaves your device unless you manually export it.", textPrimary, textSub)
+                FaqItem("Is my data secure?", "Yes. Elya is offline-first. Your data never leaves your device unless you manually export it.", textPrimary, textSub)
                 FaqItem("How do I backup my data?", "Go to Data & Backup and tap 'Export Data' to create a secure JSON file.", textPrimary, textSub)
                 FaqItem("Can I sync across devices?", "Not currently. To move data, Export on the old phone and Import on the new one.", textPrimary, textSub)
             }
@@ -370,7 +372,7 @@ fun SettingsScreen(
     if (showPrivacy) {
         ContentDialog(title = "Privacy Policy", onDismiss = { showPrivacy = false }) {
             Text(
-                text = "Your privacy is our priority. Periodt operates completely offline.\n\n" +
+                text = "Your privacy is our priority. Elya operates completely offline.\n\n" +
                         "• No data is sent to external servers.\n" +
                         "• All cycle history is stored in an encrypted database on this device.\n" +
                         "• We do not track location or use analytics cookies.\n\n" +
@@ -381,10 +383,29 @@ fun SettingsScreen(
     }
 
     if (showAbout) {
-        ContentDialog(title = "About", onDismiss = { showAbout = false }) {
+        ContentDialog(title = "About Elya", onDismiss = { showAbout = false }) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Periodt", style = MaterialTheme.typography.headlineMedium, fontFamily = BricolageGrotesque, fontWeight = FontWeight.Bold, color = textPrimary)
+                Image(
+                    painter = painterResource(id = R.drawable.elya_logo),
+                    contentDescription = "Elya floral app logo",
+                    modifier = Modifier.size(156.dp).clip(RoundedCornerShape(24.dp))
+                )
                 Text("Designed to be simple, private, and aesthetic.", fontFamily = BricolageGrotesque, color = textSub, fontSize = SIZE_MD, textAlign = TextAlign.Center)
+                Text("A community fork of Periodt · GPL-3.0", fontFamily = BricolageGrotesque, color = textSub.copy(alpha = 0.82f), fontSize = SIZE_SM, textAlign = TextAlign.Center)
+                TextButton(
+                    onClick = {
+                        try { uriHandler.openUri("mailto:${ElyaIdentity.CONTACT_EMAIL}") }
+                        catch (e: Exception) { Toast.makeText(context, "Could not open email app", Toast.LENGTH_SHORT).show() }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = ElyaIdentity.CONTACT_EMAIL,
+                        fontFamily = BricolageGrotesque,
+                        color = accentColor,
+                        fontSize = SIZE_MD
+                    )
+                }
                 Button(
                     onClick = { try { uriHandler.openUri(GITHUB_REPO_URL) } catch (e: Exception) { } },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor),
@@ -450,9 +471,9 @@ fun SettingsScreen(
 @Composable
 fun ContentDialog(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val isDark = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary    = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
+    val containerColor = if (isDark) Color(0xFF2A1C26) else Color.White
+    val textPrimary    = if (isDark) Color.White else Color(0xFF321B28)
+    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -634,7 +655,7 @@ fun SettingsItem(
                     fontFamily = BricolageGrotesque,
                     fontSize = SIZE_LG,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isDark) Color.White else Color(0xFF0F172A)
+                    color = if (isDark) Color.White else Color(0xFF321B28)
                 )
                 if (subtitle != null) {
                     Text(
@@ -656,10 +677,10 @@ fun SettingsItem(
 @Composable
 fun AppearanceDialog(current: ThemeMode, onSelect: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
     val isDark         = LocalAppIsDark.current
-    val containerColor = if (isDark) Color(0xFF1B1B1B) else Color.White
-    val textPrimary    = if (isDark) Color.White else Color(0xFF1B1B1B)
-    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF1b1b1b).copy(alpha = 0.6f)
-    val accentColor    = if (isDark) Color(0xFFD89046) else Color(0xFFa5bda3)
+    val containerColor = if (isDark) Color(0xFF2A1C26) else Color.White
+    val textPrimary    = if (isDark) Color.White else Color(0xFF321B28)
+    val textSub        = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF795C6B).copy(alpha = 0.6f)
+    val accentColor    = if (isDark) Color(0xFFE7A4BC) else Color(0xFF8F405F)
     val rowBg          = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     val configuration = LocalConfiguration.current
